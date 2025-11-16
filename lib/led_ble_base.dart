@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:led_ble_lib/extension.dart';
@@ -82,6 +83,11 @@ class LedBluetooth {
   void logFullMessage(String message) {
     developer.log(message, name: 'LedBluetooth');
   }
+
+  // Give iOS a bit more headroom when waiting for notify ACKs.
+  Duration _ackTimeout() => Platform.isIOS
+      ? const Duration(seconds: 2)
+      : const Duration(seconds: 1);
 
   /// Initialize Bluetooth
   Future<bool> initialize() async {
@@ -345,7 +351,8 @@ class LedBluetooth {
       logFullMessage('_sendSmallCommand data: ${packet.toHex()}');
 
       // Send data
-      await _writeSmallCharacteristic!.write(packet, withoutResponse: true);
+      await _writeSmallCharacteristic!
+          .write(packet, withoutResponse: Platform.isAndroid);
 
       return true;
     } catch (e) {
@@ -362,8 +369,8 @@ class LedBluetooth {
     logFullMessage('length: ${data.length}');
 
     try {
-      // Packet size
-      const int maxPacketSize = 487;
+      // Packet size: Android can handle larger writes, iOS needs smaller chunks.
+      final int maxPacketSize = Platform.isIOS ? 170 : 487;
 
       // Send in packets
       int totalPackets = (data.length / maxPacketSize).ceil();
@@ -404,22 +411,20 @@ class LedBluetooth {
         Uint8List packet = _createCommandPacket(commandCode, subPacketData);
         logFullMessage('packet: $packet');
 
-        // Send data
-        await _writeLargeCharacteristic!.write(packet, withoutResponse: true);
-
-        // Wait for response
+        // Prepare to wait for response BEFORE writing (avoid race)
         Completer<bool> completer = Completer<bool>();
         StreamSubscription? subscription;
-
         subscription = _notificationDataController.stream.listen((data) {
           // Check if response matches packet ID
           logFullMessage('_notificationDataController data: ${data.toHex()}');
-          if (data.length >= 7 &&
+          if (data.length >= 9 &&
               data[0] == _identificationCode &&
               data[1] == commandCode) {
-
             // Check packet ID
-            int responsePacketId = (data[4] << 24) | (data[5] << 16) | (data[6] << 8) | data[7];
+            int responsePacketId = (data[4] << 24) |
+                (data[5] << 16) |
+                (data[6] << 8) |
+                data[7];
             logFullMessage('responsePacketId: $responsePacketId');
             if (responsePacketId == packetId) {
               // Check response status
@@ -431,8 +436,16 @@ class LedBluetooth {
           }
         });
 
+        // Send data
+        await _writeLargeCharacteristic!
+            .write(packet, withoutResponse: Platform.isAndroid);
+        if (Platform.isIOS) {
+          // Small pacing to avoid CoreBluetooth buffer saturation
+          await Future.delayed(const Duration(milliseconds: 8));
+        }
+
         // Set timeout
-        Timer(const Duration(seconds: 1), () {
+        Timer(_ackTimeout(), () {
           if (!completer.isCompleted) {
             subscription?.cancel();
             completer.complete(false);
@@ -457,25 +470,27 @@ class LedBluetooth {
 
       // Send completion notification
       List<int> completionData = [0x01];
-      Uint8List packet = _createCommandPacket(CommandCode.sendCompletionNotification, completionData);
+      Uint8List packet = _createCommandPacket(
+          CommandCode.sendCompletionNotification, completionData);
       logFullMessage('_sendLargeCommand data: ${packet.toHex()}');
 
-      await _writeLargeCharacteristic!.write(packet, withoutResponse: true);
-
-      // Wait for response
+      // Prepare listener before writing
       Completer<bool> completer = Completer<bool>();
       StreamSubscription? subscription;
-
       subscription = _notificationDataController.stream.listen((data) {
-        // Check if response matches packet ID
         logFullMessage('_notificationDataController data: ${data.toHex()}');
-        // Check response status
         subscription?.cancel();
         completer.complete(true);
       });
 
+      await _writeLargeCharacteristic!
+          .write(packet, withoutResponse: Platform.isAndroid);
+      if (Platform.isIOS) {
+        await Future.delayed(const Duration(milliseconds: 8));
+      }
+
       // Set timeout
-      Timer(const Duration(seconds: 1), () {
+      Timer(_ackTimeout(), () {
         if (!completer.isCompleted) {
           subscription?.cancel();
           completer.complete(false);
@@ -493,12 +508,6 @@ class LedBluetooth {
 
   /// Send packet and wait for response
   Future<bool> _sendPacketWithResponse(int commandCode, List<int> data) async {
-    // Create command packet
-    Uint8List packet = _createCommandPacket(commandCode, data);
-
-    // Send data
-    await _writeLargeCharacteristic!.write(packet, withoutResponse: true);
-
     // Wait for response
     Completer<bool> completer = Completer<bool>();
     StreamSubscription? subscription;
@@ -516,8 +525,16 @@ class LedBluetooth {
       }
     });
 
+    // Create command packet and send after listener is ready
+    Uint8List packet = _createCommandPacket(commandCode, data);
+    await _writeLargeCharacteristic!
+        .write(packet, withoutResponse: Platform.isAndroid);
+    if (Platform.isIOS) {
+      await Future.delayed(const Duration(milliseconds: 8));
+    }
+
     // Set timeout
-    Timer(const Duration(seconds: 1), () {
+    Timer(_ackTimeout(), () {
       if (!completer.isCompleted) {
         subscription?.cancel();
         completer.complete(false);
@@ -529,8 +546,6 @@ class LedBluetooth {
 
   /// Delete all programs
   Future<bool> deleteAllPrograms() async {
-    await _sendSmallCommand(CommandCode.deleteAllPrograms, [0x00]);
-
     Completer<bool> completer = Completer<bool>();
     StreamSubscription? subscription;
     subscription = _notificationDataController.stream.listen((data) {
@@ -545,8 +560,10 @@ class LedBluetooth {
       }
     });
 
+    await _sendSmallCommand(CommandCode.deleteAllPrograms, [0x00]);
+
     // Set timeout
-    Timer(const Duration(seconds: 1), () {
+    Timer(_ackTimeout(), () {
       if (!completer.isCompleted) {
         subscription?.cancel();
         completer.complete(false);
@@ -589,16 +606,9 @@ class LedBluetooth {
         0x00, 0x00, // Reserved bytes
       ];
 
-      // Send add program command
-      await _sendSmallCommand(
-        CommandCode.addProgramToPlaylist,
-        commandData,
-      );
-
-      // Wait for response
+      // Wait for response (subscribe BEFORE sending command)
       Completer<bool> completer = Completer<bool>();
       StreamSubscription? subscription;
-
       subscription = _notificationDataController.stream.listen((data) {
         if (data.length >= 5 &&
             data[0] == _identificationCode &&
@@ -611,8 +621,14 @@ class LedBluetooth {
         }
       });
 
+      // Send add program command
+      await _sendSmallCommand(
+        CommandCode.addProgramToPlaylist,
+        commandData,
+      );
+
       // Set timeout
-      Timer(const Duration(seconds: 1), () {
+      Timer(_ackTimeout(), () {
         if (!completer.isCompleted) {
           subscription?.cancel();
           completer.complete(false);
@@ -637,7 +653,6 @@ class LedBluetooth {
 
   /// Complete updating program playlist
   Future<bool> updatePlaylistComplete() async {
-    await _sendSmallCommand(CommandCode.updatePlaylistComplete, [0x01]);
     // Wait for response
     Completer<bool> completer = Completer<bool>();
     StreamSubscription? subscription;
@@ -654,8 +669,10 @@ class LedBluetooth {
       }
     });
 
+    await _sendSmallCommand(CommandCode.updatePlaylistComplete, [0x01]);
+
     // Set timeout
-    Timer(const Duration(seconds: 1), () {
+    Timer(_ackTimeout(), () {
       if (!completer.isCompleted) {
         subscription?.cancel();
         completer.complete(false);
@@ -718,16 +735,9 @@ class LedBluetooth {
         0x00, 0x00, // Reserved bytes
       ];
 
-      // Send temporary program command
-      await _sendSmallCommand(
-        CommandCode.sendTemporaryProgram,
-        commandData,
-      );
-
-      // Wait for response
+      // Wait for response (subscribe before command)
       Completer<bool> completer = Completer<bool>();
       StreamSubscription? subscription;
-
       subscription = _notificationDataController.stream.listen((response) {
         logFullMessage('response: ${response.toHex()}');
         // Check if response matches
@@ -742,8 +752,14 @@ class LedBluetooth {
         }
       });
 
+      // Send temporary program command
+      await _sendSmallCommand(
+        CommandCode.sendTemporaryProgram,
+        commandData,
+      );
+
       // Set timeout
-      Timer(const Duration(seconds: 1), () {
+      Timer(_ackTimeout(), () {
         if (!completer.isCompleted) {
           subscription?.cancel();
           completer.complete(false);
@@ -777,8 +793,6 @@ class LedBluetooth {
       0x00, 0x00, 0x00, 0x00, // Reserved bytes
     ];
 
-    await _sendSmallCommand(CommandCode.selectProgram, commandData);
-
     // Wait for response
     Completer<bool> completer = Completer<bool>();
     StreamSubscription? subscription;
@@ -795,8 +809,10 @@ class LedBluetooth {
       }
     });
 
+    await _sendSmallCommand(CommandCode.selectProgram, commandData);
+
     // Set timeout
-    Timer(const Duration(seconds: 1), () {
+    Timer(_ackTimeout(), () {
       if (!completer.isCompleted) {
         subscription?.cancel();
         completer.complete(false);
@@ -883,20 +899,9 @@ class LedBluetooth {
     }
 
     try {
-      // Send get built-in GIF count command
-      bool success = await _sendSmallCommand(
-        CommandCode.getBuiltInGifCount,
-        [0x00],
-      );
-
-      if (!success) {
-        return 0;
-      }
-
-      // Wait for response
+      // Wait for response (subscribe before command)
       Completer<int> completer = Completer<int>();
       StreamSubscription? subscription;
-
       subscription = _notificationDataController.stream.listen((data) {
         if (data.length >= 5 &&
             data[0] == _identificationCode &&
@@ -908,8 +913,19 @@ class LedBluetooth {
         }
       });
 
+      // Send get built-in GIF count command
+      bool success = await _sendSmallCommand(
+        CommandCode.getBuiltInGifCount,
+        [0x00],
+      );
+
+      if (!success) {
+        subscription.cancel();
+        return 0;
+      }
+
       // Set timeout
-      Timer(const Duration(seconds: 1), () {
+      Timer(_ackTimeout(), () {
         if (!completer.isCompleted) {
           subscription?.cancel();
           completer.complete(0);
@@ -959,19 +975,9 @@ class LedBluetooth {
         featureCode, // Feature code
       ];
 
-      bool success = await _sendSmallCommand(
-        CommandCode.queryFeatureSupport,
-        commandData,
-      );
-
-      if (!success) {
-        return false;
-      }
-
-      // Wait for response
+      // Wait for response (subscribe before command)
       Completer<bool> completer = Completer<bool>();
       StreamSubscription? subscription;
-
       subscription = _notificationDataController.stream.listen((data) {
         if (data.length >= 5 &&
             data[0] == _identificationCode &&
@@ -983,8 +989,18 @@ class LedBluetooth {
         }
       });
 
+      bool success = await _sendSmallCommand(
+        CommandCode.queryFeatureSupport,
+        commandData,
+      );
+
+      if (!success) {
+        subscription.cancel();
+        return false;
+      }
+
       // Set timeout
-      Timer(const Duration(seconds: 1), () {
+      Timer(_ackTimeout(), () {
         if (!completer.isCompleted) {
           subscription?.cancel();
           completer.complete(false);
