@@ -811,9 +811,11 @@ packages:
   led_ble_lib:
     dependency: "direct overridden"
     description:
-      path: led_ble_lib
-      relative: true
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "990398a106b9b2f50179ded8e2e98679c68f05a6"
+      url: "https://github.com/Olixlabs/OlixO.git"
+    source: git
     version: "0.0.1"
   lints:
     dependency: "direct dev"

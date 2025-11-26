@@ -105,7 +105,8 @@ dependency_overrides:
   # Force the newer BLE plugin and use the local library (with 2.x + license support)
   flutter_blue_plus: ^2.0.2
   led_ble_lib:
-    path: ./led_ble_lib
+    git:
+      url: "https://github.com/baharsli/simplepackage.git"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
