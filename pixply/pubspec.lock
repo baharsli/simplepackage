@@ -814,7 +814,7 @@ packages:
       path: "."
       ref: HEAD
       resolved-ref: "990398a106b9b2f50179ded8e2e98679c68f05a6"
-      url: "https://github.com/Olixlabs/OlixO.git"
+      url: "https://github.com/baharsli/simplepackage.git"
     source: git
     version: "0.0.1"
   lints:
