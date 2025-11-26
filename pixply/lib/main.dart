@@ -73,6 +73,12 @@ class _FcmTokenManager {
   static const _prefsKey = 'last_fcm_token_sent';
   static bool _initialized = false;
 
+  static Future<bool> _isOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    final offline = results.isEmpty || (results.length == 1 && results.first == ConnectivityResult.none);
+    return !offline;
+  }
+
   static Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
@@ -84,11 +90,13 @@ class _FcmTokenManager {
   }
 
   static Future<void> _sendCurrentIfNeeded() async {
+    if (!await _isOnline()) return;
     final t = await FirebaseMessaging.instance.getToken();
     if (t != null) await _sendIfChanged(t);
   }
 
   static Future<void> _sendIfChanged(String token) async {
+    if (!await _isOnline()) return;
     final prefs = await SharedPreferences.getInstance();
     final last = prefs.getString(_prefsKey);
     if (last == token) return;
@@ -375,7 +383,7 @@ Future<void> navigateAfterSplash() async {
       sequences: generateGrayscaleCircleSets(8, 5),
       stepDuration: const Duration(seconds: 1),
       onSequenceChange: (index) {
-      if (index == 4 && !_offline) {
+      if (index == 4) {
   Future.delayed(const Duration(seconds: 1), () {
     if (mounted) {
       setState(() {
@@ -394,7 +402,7 @@ Future<void> navigateAfterSplash() async {
 
     // Fade out the logo while animation plays
     Future.delayed(const Duration(seconds: 5), () {
-      if (mounted && !_offline) {
+      if (mounted) {
         setState(() {
           _logoOpacity = 0.0;
         });
@@ -458,29 +466,6 @@ Future<void> navigateAfterSplash() async {
                 ),
               ),
             ),
-            if (_offline)
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 24,
-                // child: Material(
-                //   color: const Color(0xFF313131),
-                //   elevation: 0,
-                //   borderRadius: BorderRadius.circular(12),
-                //   child: const Padding(
-                //     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    child: Text(
-                      'Please turn on Internet',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  // ),
-                // ),
-              ),
           ],
         ),
       ),

@@ -91,11 +91,11 @@ class LedBluetooth {
 
   /// Try to use negotiated MTU to size packets conservatively.
   int _maxChunkSize() {
-    // MTU - 3 bytes ATT header. Clamp to keep iOS safe and Android under 512.
-    final int mtu = _connectedDevice?.mtuNow ?? 23;
-    final int clamped =
-        (mtu - 3).clamp(20, Platform.isIOS ? 182 : 509).toInt();
-    return clamped;
+    // Cap by platform-proven sizes but never exceed the negotiated MTU minus ATT header (3 bytes).
+    final perPlatformCap = Platform.isIOS ? 170 : 487;
+    final mtuNow = _connectedDevice?.mtuNow ?? 23;
+    final negotiated = (mtuNow - 3).clamp(20, perPlatformCap);
+    return negotiated.toInt();
   }
 
   /// Initialize Bluetooth
@@ -196,8 +196,8 @@ class LedBluetooth {
         try {
           // Prefer higher throughput & range when supported by peripheral
           await device.setPreferredPhy(
-            txPhy: Phy.le2m.mask | Phy.leCoded.mask,
-            rxPhy: Phy.le2m.mask | Phy.leCoded.mask,
+            txPhy: Phy.leCoded.mask,
+            rxPhy: Phy.leCoded.mask,
             option: PhyCoding.s2,
           );
         } catch (e) {
@@ -381,17 +381,14 @@ class LedBluetooth {
 
 bool get _shouldUseWriteWithoutResponseSmall {
   final props = _writeSmallCharacteristic?.properties;
-  if (props == null) return false;
-  // Prefer write-with-response when available; fall back to WWR only if that's all we have.
-  if (props.write == true) return false;
-  return props.writeWithoutResponse == true;
+  if (props == null) return Platform.isAndroid;
+  return props.writeWithoutResponse == true || Platform.isAndroid;
 }
 
 bool get _shouldUseWriteWithoutResponseLarge {
   final props = _writeLargeCharacteristic?.properties;
-  if (props == null) return false;
-  if (props.write == true) return false;
-  return props.writeWithoutResponse == true;
+  if (props == null) return Platform.isAndroid;
+  return props.writeWithoutResponse == true || Platform.isAndroid;
 }
 
   /// Send small data command

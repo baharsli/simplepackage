@@ -216,8 +216,11 @@ class _ConnectionPageState extends State<ConnectionPage> {
 
   Future<void> _boot() async {
     try {
-      await _requestPermissions();
-    } catch (_) {}
+      final ok = await _requestPermissions();
+      if (!ok) return;
+    } catch (_) {
+      return;
+    }
     try {
       await _initBluetooth();
     } catch (_) {}
@@ -930,39 +933,47 @@ class _ConnectionPageState extends State<ConnectionPage> {
     if (lastMac == null) return false;
 
     try {
-	      await _bluetooth.startScan(timeout: const Duration(seconds: 6));
-	      final results = await FlutterBluePlus.scanResults.first;
-	      for (final r in results) {
-	        if (r.device.remoteId.str.toUpperCase() == lastMac) {
-	          // Stop scanning before attempting to connect (improves iOS reliability)
-	          await _bluetooth.stopScan();
-	          final success = await _bluetooth.connect(r.device);
-	          if (success) {
-	            setState(() {
-	              _selectedDevice = LedScreen(
-	                name: r.device.platformName,
-	                macAddress: lastMac,
-	                width: ledWidth,
-	                height: ledHeight,
-	                colorType:
-	                    _selectedDevice?.colorType ?? LedColorType.monochrome,
-	                rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
-	                firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
-	              );
-	              _connectedDevice = r.device;
-	              _isConnected = true;
-	            });
-	            DisplayManager.initialize(_bluetooth);
-	            if (!mounted) return true;
-	            if (Platform.isIOS) {
-	              await Future.delayed(const Duration(milliseconds: 150));
-	            }
+      const int attempts = 3;
+      for (int attempt = 0; attempt < attempts; attempt++) {
+        await _bluetooth.startScan(timeout: const Duration(seconds: 5));
+        List<ScanResult> results = [];
+        try {
+          results = await FlutterBluePlus.scanResults
+              .first
+              .timeout(const Duration(seconds: 5));
+        } catch (_) {}
+        await _bluetooth.stopScan();
+        for (final r in results) {
+          if (r.device.remoteId.str.toUpperCase() == lastMac) {
+            final success = await _bluetooth.connect(r.device);
+            if (success) {
+              setState(() {
+                _selectedDevice = LedScreen(
+                  name: r.device.platformName,
+                  macAddress: lastMac,
+                  width: ledWidth,
+                  height: ledHeight,
+                  colorType:
+                      _selectedDevice?.colorType ?? LedColorType.monochrome,
+                  rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
+                  firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
+                );
+                _connectedDevice = r.device;
+                _isConnected = true;
+              });
+              DisplayManager.initialize(_bluetooth);
+              if (!mounted) return true;
+              if (Platform.isIOS) {
+                await Future.delayed(const Duration(milliseconds: 150));
+              }
 
-	            await _sendImageProgram();
-	            return true;
-	          }
-	        }
-	      }
+              await _sendImageProgram();
+              return true;
+            }
+          }
+        }
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
     } catch (_) {
       // ignore
     } finally {
@@ -1025,33 +1036,32 @@ class _ConnectionPageState extends State<ConnectionPage> {
       }
     }
 
-	    if (bluetoothDevice != null) {
-	      // Stop scanning before attempting to connect (esp. important for iOS)
-	      if (_isScanning) {
-	        await _stopScan();
-	      }
-	      final success = await _bluetooth.connect(bluetoothDevice);
-	      if (success) {
-	        setState(() {
-	          _selectedDevice = device;
-	          _connectedDevice = bluetoothDevice;
-	        });
-	        _isConnected = true;
-	        DisplayManager.initialize(_bluetooth);
-	        await _cacheLastMacDevice(device);
-	        if (!mounted) return;
-	        // Small stabilization delay on iOS before first large transfer
-	        if (Platform.isIOS) {
-	          await Future.delayed(const Duration(milliseconds: 150));
-	        }
-	        // Send default logo program to the board after successful connect.
-	        await _sendImageProgram(); // Replace with your image path if needed
-	      } else {
-	        _showMessage('Failed to connect to device');
-	      }
-	    } else {
-	      _showMessage('Bluetooth device not found');
-	    }
+    if (bluetoothDevice != null) {
+      // Stop scanning before attempting to connect (esp. important for iOS)
+      await _bluetooth.stopScan();
+      _isScanning = false;
+      final success = await _bluetooth.connect(bluetoothDevice);
+      if (success) {
+        setState(() {
+          _selectedDevice = device;
+          _connectedDevice = bluetoothDevice;
+        });
+        _isConnected = true;
+        DisplayManager.initialize(_bluetooth);
+        await _cacheLastMacDevice(device);
+        if (!mounted) return;
+        // Small stabilization delay on iOS before first large transfer
+        if (Platform.isIOS) {
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+        // Send default logo program to the board after successful connect.
+        await _sendImageProgram(); // Replace with your image path if needed
+      } else {
+        _showMessage('Failed to connect to device');
+      }
+    } else {
+      _showMessage('Bluetooth device not found');
+    }
 	  }
 
   Future<void> _disconnect() async {
@@ -1154,33 +1164,40 @@ class _ConnectionPageState extends State<ConnectionPage> {
     return Uint8List.fromList(ledData);
   }
 
-  Future<void> _sendImageProgram() async {
+  Future<bool> _sendImageProgram() async {
     if (!_bluetooth.isConnected) {
       _showMessage('Please connect to a device first');
-      return;
+      return false;
     }
 
     // iOS: Ã˜Â§Ã˜Â² Ã™â€¦Ã˜Â³Ã›Å’Ã˜Â± Ã™â€šÃ˜Â¯Ã›Å’Ã™â€¦Ã›Å’ DisplayManager Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™â€žÃ™Ë†ÃšÂ¯Ã™Ë† Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ ÃšÂ©Ã™â€ 
     if (Platform.isIOS) {
       try {
+        await Future.delayed(const Duration(milliseconds: 150));
+        if (!_bluetooth.isConnected) return false;
         DisplayManager.initialize(_bluetooth);
         DisplayManager.recordLastDisplay(
           path: 'assets/logopixply.png',
           type: DisplayType.image,
         );
         await DisplayManager.refreshDisplay();
-        return;
+        return true;
       } catch (e) {
         _showMessage('Error sending image program: $e');
-        return;
+        return false;
       }
     }
 
     // Ã˜Â§ÃšÂ¯Ã˜Â± Ã™â€¡Ã™â€¦Ã›Å’Ã™â€  Ã™â€žÃ™Ë†ÃšÂ¯Ã™Ë† Ã™â€¡Ã™â€¦Ã›Å’Ã™â€  Ã˜Â­Ã˜Â§Ã™â€žÃ˜Â§ Ã˜Â±Ã™Ë†Ã›Å’ Ã˜Â¨Ã˜Â±Ã˜Â¯ Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Å’ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã™â€ Ã™ÂÃ˜Â±Ã˜Â³Ã˜Âª
     try {
       // Ã˜Â´Ã˜Â¨Ã›Å’Ã™â€¡ Ã™â€¦Ã™â€ Ã˜Â·Ã™â€š Ã˜Â¨Ã˜Â§Ã˜Â²Ã›Å’Ã¢â‚¬Å’Ã™â€¡Ã˜Â§ (Ã™â€¦Ã˜Â«Ã™â€ž Achi): Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜Å’ Ã˜Â¨Ã˜Â±Ã˜Â¯ Ã˜Â±Ã˜Â§ Ã˜Â¢Ã™â€¦Ã˜Â§Ã˜Â¯Ã™â€¡ ÃšÂ©Ã™â€ .
+      // Use a small "ping" to confirm the board is responsive before clearing.
+      final pingOk = await _bluetooth.setBrightness(Brightness.high);
+      if (!pingOk) {
+        _showMessage('Board not responding yet');
+        return false;
+      }
       await _bluetooth.switchLedScreen(true);
-      await _bluetooth.setBrightness(Brightness.high);
       await _bluetooth.deleteAllPrograms();
       await _bluetooth.updatePlaylistComplete();
 
@@ -1217,6 +1234,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
         await Future.delayed(const Duration(seconds: 1));
         ok = await _bluetooth.updatePlaylistComplete();
       }
+      if (!ok) {
+        await Future.delayed(const Duration(seconds: 1));
+        ok = await _bluetooth.updatePlaylistComplete();
+      }
 
       // Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™â€¡Ã™â€¦Ã˜Â§Ã™â€¡Ã™â€ ÃšÂ¯Ã›Å’ Ã˜Â¨Ã˜Â§ DisplayManagerÃ˜Å’ Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  Ã™â€ Ã™â€¦Ã˜Â§Ã›Å’Ã˜Â´ Ã˜Â±Ã˜Â§ Ã˜Â«Ã˜Â¨Ã˜Âª ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦
       DisplayManager.initialize(_bluetooth);
@@ -1226,12 +1247,14 @@ class _ConnectionPageState extends State<ConnectionPage> {
       );
 
       _showMessage(ok ? 'Image playlist sent' : 'Failed to send image playlist');
+      return ok;
     } catch (e) {
       _showMessage('Error sending image: $e');
+      return false;
     }
   }
 
-  Future<void> _requestPermissions() async {
+  Future<bool> _requestPermissions() async {
     if (Platform.isAndroid) {
       final sdk = await _androidSdkInt();
 
@@ -1243,7 +1266,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           rationaleMessage:
               'Pixply needs Bluetooth scan permission to discover your Pixmat board nearby.',
         );
-        if (!okScan) return;
+        if (!okScan) return false;
 
         final okConnect = await _requestWithUX(
           permission: Permission.bluetoothConnect,
@@ -1251,7 +1274,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           rationaleMessage:
               'Pixply needs Bluetooth connect permission to pair and communicate with your board.',
         );
-        if (!okConnect) return;
+        if (!okConnect) return false;
 
         // Bluetooth adapter state with timeout fallback to reduce lag
         BluetoothAdapterState btState;
@@ -1273,7 +1296,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
           rationaleMessage:
               'Android requires Location permission to scan for Bluetooth devices nearby.',
         );
-        if (!okLocation) return;
+        if (!okLocation) return false;
 
         // Ensure location services are ON (system setting)
         final serviceEnabled =
@@ -1284,7 +1307,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
             message:
                 'Location services are turned off. Please enable them to discover your board.',
           );
-          return;
+          return false;
         }
 
         // Bluetooth adapter state with timeout fallback to reduce lag
@@ -1315,8 +1338,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
       }
     } else {
       // Desktop/Web: no runtime permissions needed
-      return;
+      return true;
     }
+    return true;
   }
 }
 

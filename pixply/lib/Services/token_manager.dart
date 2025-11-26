@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// مدیریت توکن FCM: دریافت، ارسال به سرور، به‌روزرسانی و حذف
 class TokenManager {
@@ -12,6 +13,13 @@ class TokenManager {
   final String apiBase;  // آدرس API سرورت، مثلا: https://api.example.com
 
   TokenManager({required this.apiBase, required this.userId});
+
+  Future<bool> _isOnline() async {
+    final results = await Connectivity().checkConnectivity();
+    final offline = results.isEmpty || (results.length == 1 && results.first == ConnectivityResult.none);
+    return !offline;
+  }
+
 
   /// در شروع اپ صدا بزن: بعد از Firebase.initializeApp و گرفتن مجوز اعلان
   Future<void> init() async {
@@ -26,6 +34,7 @@ class TokenManager {
 
   /// موقع خروج از حساب/غیرفعال کردن اعلان: توکن را از سرور حذف کن
   Future<void> unregisterToken() async {
+    if (!await _isOnline()) return;
     final prefs = await SharedPreferences.getInstance();
     final lastToken = prefs.getString(_prefsKeyToken);
     final lastUser  = prefs.getString(_prefsKeyUser);
@@ -42,7 +51,7 @@ class TokenManager {
           'token': lastToken,
           'userId': lastUser, // می‌تونی optional نگه داری
         }),
-      );
+      ).timeout(const Duration(seconds: 6));
       if (res.statusCode >= 200 && res.statusCode < 300) {
         // لوکال را پاک کن
         await prefs.remove(_prefsKeyToken);
@@ -58,6 +67,7 @@ class TokenManager {
   /// ——— private ———
 
   Future<void> _sendCurrentIfNeeded() async {
+    if (!await _isOnline()) return;
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
       await _sendToServerIfChanged(token);
@@ -65,6 +75,7 @@ class TokenManager {
   }
 
   Future<void> _sendToServerIfChanged(String newToken) async {
+    if (!await _isOnline()) return;
     final prefs = await SharedPreferences.getInstance();
     final lastToken = prefs.getString(_prefsKeyToken);
     final lastUser  = prefs.getString(_prefsKeyUser);
@@ -87,7 +98,7 @@ class TokenManager {
           'appVersion': '1.0.0',    // اگر خواستی از PackageInfo پر کن
           'subscribedTopics': ['all'], // اگر از topic استفاده می‌کنی
         }),
-      );
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
         await prefs.setString(_prefsKeyToken, newToken);

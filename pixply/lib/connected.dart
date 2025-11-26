@@ -27,6 +27,7 @@ class _ConnectedPageState extends State<ConnectedPage> {
   // Consent constants (kept identical to termsconditions.dart)
   static const String kTermsAcceptedKey = 'pixply_terms_accepted_v1';
   static const String kUserIdKey = 'pixply_user_id';
+  static const String _kPendingConsentKey = 'pixply_pending_consent_v1';
   static const String kWebhookUrl = 'https://hook.eu2.make.com/j798ph0qy57ab49kucld3b7r9hm8f2by';
   static const String kWebhookApiKey = 'Lm6t@9kQpj#';
   static const String kWebhookApiHeader = 'X-Api-Key';
@@ -45,6 +46,7 @@ class _ConnectedPageState extends State<ConnectedPage> {
   void initState() {
     super.initState();
     _loadConsent();
+    _flushPendingConsent();
   }
 
   Future<void> _loadConsent() async {
@@ -60,6 +62,20 @@ class _ConnectedPageState extends State<ConnectedPage> {
       }
       setState(() => _consentRecorded = accepted);
     } catch (_) {}
+  }
+
+  Future<void> _flushPendingConsent() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kPendingConsentKey);
+      if (raw == null) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<String, dynamic>) return;
+      await _sendConsentToServer(decoded);
+      await prefs.remove(_kPendingConsentKey);
+    } catch (_) {
+      // keep pending payload for next attempt
+    }
   }
 
   Future<bool> _hasInternet() async {
@@ -215,26 +231,31 @@ class _ConnectedPageState extends State<ConnectedPage> {
       ],
     };
 
+    bool sent = false;
+    final prefs = await SharedPreferences.getInstance();
     try {
       await _sendConsentToServer(payload);
-      await _secure.write(key: kTermsAcceptedKey, value: 'true');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(kTermsAcceptedKey, true);
-      setState(() => _consentRecorded = true);
+      sent = true;
+      await prefs.remove(_kPendingConsentKey);
     } catch (_) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          backgroundColor: const Color(0xFF2A2A2A),
-          title: const Text('Submit failed', style: TextStyle(color: Colors.white)),
-          content: const Text('Could not record your consent. Please try again.', style: TextStyle(color: Colors.white70)),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+      // Cache locally and retry later when connectivity is available.
+      await prefs.setString(_kPendingConsentKey, jsonEncode(payload));
+    }
+
+    await _secure.write(key: kTermsAcceptedKey, value: 'true');
+    await prefs.setBool(kTermsAcceptedKey, true);
+    setState(() => _consentRecorded = true);
+
+    if (!sent) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saved. Will submit once internet is available.'),
+          duration: Duration(seconds: 3),
         ),
       );
-      return;
-    } finally {
-      setState(() => _submitting = false);
     }
+
+    setState(() => _submitting = false);
   }
 
   Future<void> _openUrl(String url) async {

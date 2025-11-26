@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class PixStudioActivationPatch {
   // ====== تنظیمات بای‌پس (بدون سرور) ======
@@ -92,6 +93,10 @@ extension PixStudioActivationPatchWebhook on PixStudioActivationPatch {
     required String code,
     String? deviceFingerprint,
   }) async {
+    final results = await Connectivity().checkConnectivity();
+    final offline = results.isEmpty || (results.length == 1 && results.first == ConnectivityResult.none);
+    if (offline) return 'allow'; // do not block when offline
+
     if (await PixStudioActivationPatch.isUnlocked()) return 'allow';
 
     final entered = code.trim();

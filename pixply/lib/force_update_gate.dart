@@ -61,6 +61,19 @@ class _ForceUpdateGateState extends State<ForceUpdateGate> {
     if (_checking) return;
     _checking = true;
     try {
+      // Skip remote call when offline so startup never blocks.
+      final conn = await Connectivity().checkConnectivity();
+      final offline = conn.isEmpty || (conn.length == 1 && conn.first == ConnectivityResult.none);
+      if (offline) {
+        if (!mounted) return;
+        setState(() {
+          _checked = false;
+          _suggest = false;
+        });
+        _checking = false;
+        return;
+      }
+
       final info = await PackageInfo.fromPlatform();
       final current = _v(info.version);
 
@@ -77,19 +90,20 @@ class _ForceUpdateGateState extends State<ForceUpdateGate> {
           .toString();
       _suggestMsg = (j['suggest_message'] ?? 'A new update is available.').toString();
 
-      final mustBlock = maintenance || _cmp(current, _v(minSupported)) < 0;
-      final suggestOnly = !mustBlock && _cmp(current, _v(latest)) < 0;
+      final mustUpdate = maintenance || _cmp(current, _v(minSupported)) < 0 || _cmp(current, _v(latest)) < 0;
 
       if (!mounted) return;
       setState(() {
-        _mustBlock = mustBlock;
-        _suggest = suggestOnly;
+        _suggest = mustUpdate;
         _checked = true;
       });
       _checking = false;
     } catch (_) {
       if (!mounted) return;
-      setState(() => _checked = false);
+      setState(() {
+        _checked = false;
+        _suggest = false;
+      });
       _checking = false; // اگر نتوانست کانفیگ بخواند، قفل نکن
     }
   }
