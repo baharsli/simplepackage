@@ -10,8 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Align with app; 2.x requires license param on connect
-  flutter_blue_plus: ^2.0.2
+  flutter_blue_plus: ^1.14.0
   convert: ^3.1.1
   crclib: ^3.0.0
 #  google_fonts: ^6.2.1

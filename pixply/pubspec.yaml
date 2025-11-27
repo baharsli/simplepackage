@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.35+290
+version: 1.0.3+100
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
@@ -41,7 +41,7 @@ dependencies:
   slide_action: ^0.0.1
   flutter_screenutil: ^5.9.3
   dotted_line: ^3.0.0
-  flutter_blue_plus: ^2.0.2
+  flutter_blue_plus: ^1.14.0
   provider: ^6.1.5+1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
@@ -52,6 +52,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
+  led_ble_lib:
+    git:
+      url: https://github.com/baharsli/simplepackage.git
   flutter_colorpicker: ^1.1.0
   video_player: ^2.10.0
   ionicons: ^0.2.2
@@ -96,17 +99,14 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: assets/app_icon.png
-  adaptive_icon_background: assets/app_icon_bg.png
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_monochrome: assets/app_icon_mono.png
   remove_alpha_ios: true
   adaptive_icon_foreground: assets/app_icon_fg.png
 
-dependency_overrides:
-  # Force the newer BLE plugin and use the local library (with 2.x + license support)
-  flutter_blue_plus: ^2.0.2
-  led_ble_lib:
-    git:
-      url: "https://github.com/baharsli/simplepackage.git"
+# dependency_overrides:
+#   flutter_plugin_android_lifecycle: 2.0.29
+#   path_provider_android: 2.2.7 
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
