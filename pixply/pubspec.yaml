@@ -53,8 +53,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.6
   led_ble_lib:
-    git:
-      url: https://github.com/baharsli/simplepackage.git
+    path: ../
   flutter_colorpicker: ^1.1.0
   video_player: ^2.10.0
   ionicons: ^0.2.2

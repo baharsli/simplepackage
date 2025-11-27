@@ -933,46 +933,32 @@ class _ConnectionPageState extends State<ConnectionPage> {
     if (lastMac == null) return false;
 
     try {
-      const int attempts = 3;
-      for (int attempt = 0; attempt < attempts; attempt++) {
-        await _bluetooth.startScan(timeout: const Duration(seconds: 5));
-        List<ScanResult> results = [];
-        try {
-          results = await FlutterBluePlus.scanResults
-              .first
-              .timeout(const Duration(seconds: 5));
-        } catch (_) {}
-        await _bluetooth.stopScan();
-        for (final r in results) {
-          if (r.device.remoteId.str.toUpperCase() == lastMac) {
-            final success = await _bluetooth.connect(r.device);
-            if (success) {
-              setState(() {
-                _selectedDevice = LedScreen(
-                  name: r.device.platformName,
-                  macAddress: lastMac,
-                  width: ledWidth,
-                  height: ledHeight,
-                  colorType:
-                      _selectedDevice?.colorType ?? LedColorType.monochrome,
-                  rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
-                  firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
-                );
-                _connectedDevice = r.device;
-                _isConnected = true;
-              });
-              DisplayManager.initialize(_bluetooth);
-              if (!mounted) return true;
-              if (Platform.isIOS) {
-                await Future.delayed(const Duration(milliseconds: 150));
-              }
-
-              await _sendImageProgram();
-              return true;
-            }
+      await _bluetooth.startScan(timeout: const Duration(seconds: 6));
+      final results = await FlutterBluePlus.scanResults.first;
+      for (final r in results) {
+        if (r.device.remoteId.str.toUpperCase() == lastMac) {
+          await _bluetooth.stopScan();
+          final success = await _bluetooth.connect(r.device);
+          if (success) {
+            setState(() {
+              _selectedDevice = LedScreen(
+                name: r.device.platformName,
+                macAddress: lastMac,
+                width: ledWidth,
+                height: ledHeight,
+                colorType:
+                    _selectedDevice?.colorType ?? LedColorType.monochrome,
+                rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
+                firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
+              );
+              _connectedDevice = r.device;
+              _isConnected = true;
+            });
+            DisplayManager.initialize(_bluetooth);
+            await _sendImageProgram();
+            return true;
           }
         }
-        await Future.delayed(const Duration(milliseconds: 400));
       }
     } catch (_) {
       // ignore
@@ -1169,43 +1155,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
       _showMessage('Please connect to a device first');
       return false;
     }
-
-    // iOS: Ã˜Â§Ã˜Â² Ã™â€¦Ã˜Â³Ã›Å’Ã˜Â± Ã™â€šÃ˜Â¯Ã›Å’Ã™â€¦Ã›Å’ DisplayManager Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™â€žÃ™Ë†ÃšÂ¯Ã™Ë† Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ ÃšÂ©Ã™â€ 
-    if (Platform.isIOS) {
-      try {
-        await Future.delayed(const Duration(milliseconds: 150));
-        if (!_bluetooth.isConnected) return false;
-        DisplayManager.initialize(_bluetooth);
-        DisplayManager.recordLastDisplay(
-          path: 'assets/logopixply.png',
-          type: DisplayType.image,
-        );
-        await DisplayManager.refreshDisplay();
-        return true;
-      } catch (e) {
-        _showMessage('Error sending image program: $e');
-        return false;
-      }
-    }
-
-    // Ã˜Â§ÃšÂ¯Ã˜Â± Ã™â€¡Ã™â€¦Ã›Å’Ã™â€  Ã™â€žÃ™Ë†ÃšÂ¯Ã™Ë† Ã™â€¡Ã™â€¦Ã›Å’Ã™â€  Ã˜Â­Ã˜Â§Ã™â€žÃ˜Â§ Ã˜Â±Ã™Ë†Ã›Å’ Ã˜Â¨Ã˜Â±Ã˜Â¯ Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Å’ Ã˜Â¯Ã™Ë†Ã˜Â¨Ã˜Â§Ã˜Â±Ã™â€¡ Ã™â€ Ã™ÂÃ˜Â±Ã˜Â³Ã˜Âª
     try {
-      // Ã˜Â´Ã˜Â¨Ã›Å’Ã™â€¡ Ã™â€¦Ã™â€ Ã˜Â·Ã™â€š Ã˜Â¨Ã˜Â§Ã˜Â²Ã›Å’Ã¢â‚¬Å’Ã™â€¡Ã˜Â§ (Ã™â€¦Ã˜Â«Ã™â€ž Achi): Ã™â€šÃ˜Â¨Ã™â€ž Ã˜Â§Ã˜Â² Ã˜Â§Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜Å’ Ã˜Â¨Ã˜Â±Ã˜Â¯ Ã˜Â±Ã˜Â§ Ã˜Â¢Ã™â€¦Ã˜Â§Ã˜Â¯Ã™â€¡ ÃšÂ©Ã™â€ .
-      // Use a small "ping" to confirm the board is responsive before clearing.
-      final pingOk = await _bluetooth.setBrightness(Brightness.high);
-      if (!pingOk) {
-        _showMessage('Board not responding yet');
-        return false;
-      }
-      await _bluetooth.switchLedScreen(true);
-      await _bluetooth.deleteAllPrograms();
-      await _bluetooth.updatePlaylistComplete();
-
-      // Ã˜Â¯Ã˜Â± Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Âª Ã™â€ Ã›Å’Ã˜Â§Ã˜Â² Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜ÂªÃ™Ë†Ã˜Â§Ã™â€ Ã›Å’Ã™â€¦ Ãšâ€ Ã˜Â±Ã˜Â®Ã˜Â´ Ã˜Â±Ã˜Â§ Ã™â€¡Ã™â€¦ Ã˜Â³Ã˜Âª ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦Ã˜Å’ Ã™ÂÃ˜Â¹Ã™â€žÃ˜Â§Ã™â€¹ Ã˜Â§Ã˜Â² Ã™â€¦Ã™â€šÃ˜Â¯Ã˜Â§Ã˜Â± Ã™Â¾Ã›Å’Ã˜Â´Ã¢â‚¬Å’Ã™ÂÃ˜Â±Ã˜Â¶ Ã˜Â§Ã˜Â³Ã˜ÂªÃ™ÂÃ˜Â§Ã˜Â¯Ã™â€¡ Ã™â€¦Ã›Å’Ã¢â‚¬Å’Ã˜Â´Ã™Ë†Ã˜Â¯.
-
-      // Ã™â€žÃ™Ë†ÃšÂ¯Ã™Ë†Ã›Å’ Ã™Â¾Ã›Å’Ã˜Â´Ã¢â‚¬Å’Ã™ÂÃ˜Â±Ã˜Â¶ Ã˜Â±Ã˜Â§ Ã˜Â¨Ã™â€¡ BMP (BGR) Ã˜ÂªÃ˜Â¨Ã˜Â¯Ã›Å’Ã™â€ž ÃšÂ©Ã™â€ 
       final bmp = await loadBmpAssetAsBgrBmp('assets/logopixply.png');
-
+      await _bluetooth.deleteAllPrograms();
       final program = Program.bmp(
         partitionX: 0,
         partitionY: 0,
@@ -1218,8 +1170,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
         circularBorder: 0,
         brightness: 100,
       );
-
-      // Ã˜Â¨Ã˜Â±Ã™â€ Ã˜Â§Ã™â€¦Ã™â€¡ Ã˜Â±Ã˜Â§ Ã˜Â¨Ã™â€¡ Ã™Â¾Ã™â€žÃ›Å’Ã¢â‚¬Å’Ã™â€žÃ›Å’Ã˜Â³Ã˜Âª Ã˜Â§Ã˜Â¶Ã˜Â§Ã™ÂÃ™â€¡ ÃšÂ©Ã™â€ 
       await _bluetooth.addProgramToPlaylist(
         program,
         programCount: 1,
@@ -1227,25 +1177,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
         playbackCount: 1,
         circularBorder: 0,
       );
-
-      // Ã™Â¾Ã™â€žÃ›Å’Ã¢â‚¬Å’Ã™â€žÃ›Å’Ã˜Â³Ã˜Âª Ã˜Â±Ã˜Â§ Ã™â€ Ã™â€¡Ã˜Â§Ã›Å’Ã›Å’ ÃšÂ©Ã™â€  (Ã˜Â¨Ã˜Â§ Ã˜Â±Ã›Å’Ã˜ÂªÃ¢â‚¬Å’Ã˜Â±Ã˜Â§Ã›Å’ ÃšÂ©Ã™Ë†Ãšâ€ ÃšÂ© Ã™â€¦Ã˜Â«Ã™â€ž Ã˜ÂµÃ™ÂÃ˜Â­Ã˜Â§Ã˜Âª Ã˜Â¨Ã˜Â§Ã˜Â²Ã›Å’)
-      var ok = await _bluetooth.updatePlaylistComplete();
-      if (!ok) {
-        await Future.delayed(const Duration(seconds: 1));
-        ok = await _bluetooth.updatePlaylistComplete();
-      }
-      if (!ok) {
-        await Future.delayed(const Duration(seconds: 1));
-        ok = await _bluetooth.updatePlaylistComplete();
-      }
-
-      // Ã˜Â¨Ã˜Â±Ã˜Â§Ã›Å’ Ã™â€¡Ã™â€¦Ã˜Â§Ã™â€¡Ã™â€ ÃšÂ¯Ã›Å’ Ã˜Â¨Ã˜Â§ DisplayManagerÃ˜Å’ Ã˜Â¢Ã˜Â®Ã˜Â±Ã›Å’Ã™â€  Ã™â€ Ã™â€¦Ã˜Â§Ã›Å’Ã˜Â´ Ã˜Â±Ã˜Â§ Ã˜Â«Ã˜Â¨Ã˜Âª ÃšÂ©Ã™â€ Ã›Å’Ã™â€¦
-      DisplayManager.initialize(_bluetooth);
-      DisplayManager.recordLastDisplay(
-        path: 'assets/logopixply.png',
-        type: DisplayType.image,
-      );
-
+      final ok = await _bluetooth.updatePlaylistComplete();
       _showMessage(ok ? 'Image playlist sent' : 'Failed to send image playlist');
       return ok;
     } catch (e) {
@@ -1255,6 +1187,9 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
 
   Future<bool> _requestPermissions() async {
+
+
+
     if (Platform.isAndroid) {
       final sdk = await _androidSdkInt();
 
