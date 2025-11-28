@@ -25,7 +25,7 @@ class LedBluetooth {
   static const String _notifyCharacteristicUuid = '0000a953-0000-1000-8000-00805f9b34fb';
 
   /// Advertisement name prefix
-  static const String _advertisementNamePrefix = 'iledcolor-';
+static const List<String> _advertisementNamePrefixes = ['iledcolor-', 'pix'];
 
   /// Advertisement filter name
   static const List<int> _advertisementFilterName = [0x54, 0x42, 0x44, 0x02];
@@ -230,11 +230,10 @@ class LedBluetooth {
   }
 
   /// Check if it's an LED device
-  bool _isLedDevice(ScanResult result) {
-    // Check device name
-    if (result.device.platformName.startsWith(_advertisementNamePrefix)) {
-      return true;
-    }
+bool _isLedDevice(ScanResult result) {
+  if (_advertisementNamePrefixes.any(result.device.platformName.startsWith)) {
+    return true;
+  }
 
     // Check advertisement data
     if (result.advertisementData.manufacturerData.isNotEmpty) {
