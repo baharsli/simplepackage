@@ -12,7 +12,7 @@ import 'package:pixply/connected.dart';
 import 'package:pixply/Settings/displaymanager.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'dart:typed_data';
+// import 'dart:typed_data';
 // import 'package:pixply/text_data_lib.dart';
 
 

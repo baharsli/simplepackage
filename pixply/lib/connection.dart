@@ -797,7 +797,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 80),
                 child: const Text(
-                  "CanÃ¢â‚¬â„¢t Find?",
+                  "Can't Find?",
                   style: TextStyle(
                     color: Color(0xFF8B8B8B),
                     fontSize: 20,

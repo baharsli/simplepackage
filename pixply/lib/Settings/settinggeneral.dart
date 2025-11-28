@@ -143,29 +143,29 @@ void toggleSection(String section) {
 
 
 
-  Future<void> resetToDefaults() async {
-    setState(() {
-      brightness = 0.5;
-      _selectedRotation = ScreenRotation.degree0;
-      selectedColor = Colors.white;
-      expandedSections.updateAll((key, value) => false);
-    });
+  // Future<void> resetToDefaults() async {
+  //   setState(() {
+  //     brightness = 0.5;
+  //     _selectedRotation = ScreenRotation.degree0;
+  //     selectedColor = Colors.white;
+  //     expandedSections.updateAll((key, value) => false);
+  //   });
 
-    // Update shared config so external settings also reset app-wide defaults
-    DisplayManager.recordLastDisplay(
-      path: 'assets/logopixply.png',
-      type: DisplayType.image,
-    );
-    ColorConfig.ledMasterBrightness = 0.5;
-    ColorConfig.setColor(Colors.white);
-    RotationStore.setRotation(ScreenRotation.degree0);
+  //   // Update shared config so external settings also reset app-wide defaults
+  //   DisplayManager.recordLastDisplay(
+  //     path: 'assets/logopixply.png',
+  //     type: DisplayType.image,
+  //   );
+  //   ColorConfig.ledMasterBrightness = 0.5;
+  //   ColorConfig.setColor(Colors.white);
+  //   RotationStore.setRotation(ScreenRotation.degree0);
 
-    if (widget.isConnected) {
-      await widget.bluetooth.deleteAllPrograms();
-      await widget.bluetooth.updatePlaylistComplete();
-      await DisplayManager.refreshDisplay();
-    }
-  }
+  //   if (widget.isConnected) {
+  //     await widget.bluetooth.deleteAllPrograms();
+  //     await widget.bluetooth.updatePlaylistComplete();
+  //     await DisplayManager.refreshDisplay();
+  //   }
+  // }
   
 
 
@@ -636,13 +636,13 @@ onChanged: (value) async {
               
             ),
 
-            _buildTile(
-              "Reset to Default",
-              resetToDefaults,
-              iconPath: 'assets/reset.svg',
+            // _buildTile(
+            //   "Reset to Default",
+            //   resetToDefaults,
+            //   iconPath: 'assets/reset.svg',
 
               
-            ),
+            // ),
 _buildTile(
   "Help Center",
   () {
