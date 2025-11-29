@@ -80,10 +80,8 @@ Future<bool> _ensureUploadPermissions({
     if (Platform.isIOS) {
       toRequest.add(Permission.photos); // iOS photo library
     } else if (Platform.isAndroid) {
-      // On recent permission_handler, these map to READ_MEDIA_* on Android 13+
-      // and fall back to READ_EXTERNAL_STORAGE on older versions.
-      toRequest.addAll([Permission.photos, Permission.videos]);
-      // If you only ever pick images, remove Permission.videos.
+      // Android: rely on system Photo Picker (no runtime storage permission).
+      // Keep empty so we don't request READ_MEDIA_* / READ_EXTERNAL_STORAGE.
     }
   }
 

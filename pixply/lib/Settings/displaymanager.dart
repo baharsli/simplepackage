@@ -96,22 +96,29 @@ class DisplayManager {
 
   static Future<void> _refreshDisplay() async {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
-    await _bluetooth!.switchLedScreen(true);
-    // await _bluetooth!.setBrightness(Brightness.high);
-    // use master brightness value from settings
-    final brightnessVal = ColorConfig.ledMasterBrightness;
-    Brightness level;
-    if (brightnessVal < 0.33) {
-      level = Brightness.minimum;
-    } else if (brightnessVal < 0.66) {
-      level = Brightness.medium;
-    } else {
-      level = Brightness.high;
-    }
-    await _bluetooth!.setBrightness(level);
-    await _bluetooth!.setRotation(RotationStore.selectedRotation);
+
     bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
     _lastAppliedRotation = RotationStore.selectedRotation;
+
+    final bool isImage = _lastType == DisplayType.image;
+    final bool colorOnly = isImage && !rotationChanged;
+
+    // Only touch power/brightness/rotation when needed (not on pure color change)
+    if (!colorOnly) {
+      await _bluetooth!.switchLedScreen(true);
+      // use master brightness value from settings
+      final brightnessVal = ColorConfig.ledMasterBrightness;
+      Brightness level;
+      if (brightnessVal < 0.33) {
+        level = Brightness.minimum;
+      } else if (brightnessVal < 0.66) {
+        level = Brightness.medium;
+      } else {
+        level = Brightness.high;
+      }
+      await _bluetooth!.setBrightness(level);
+      await _bluetooth!.setRotation(RotationStore.selectedRotation);
+    }
 
       // If rotation or content type changed, clear playlist to rebuild cleanly
     bool structuralChange = rotationChanged || _lastType != DisplayType.image;
@@ -148,6 +155,9 @@ class DisplayManager {
       // brightness: 100,
       brightness: (ColorConfig.ledMasterBrightness * 100).clamp(0, 100).round(),
     );
+
+    // Clear previous playlist so the new colored frame doesn't mix with old content.
+    await _bluetooth!.deleteAllPrograms();
 
     await _bluetooth!.addProgramToPlaylist(
       program,
