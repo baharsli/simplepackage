@@ -14,23 +14,10 @@
 	<string>6.0</string>
 	 <!-- iOS 13+ Bluetooth permission (required for CoreBluetooth) -->
 	<key>NSBluetoothAlwaysUsageDescription</key>
-    <string>This app needs Bluetooth to function</string>
+    <string>Pixply uses Bluetooth to discover and connect to your Pixply LED Board and send game images and animations to the device.</string>
 	  <!-- If supporting iOS 12 or earlier, UNCOMMENT this legacy key -->
-	 <!-- <key>NSBluetoothPeripheralUsageDescription</key> -->
-	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Pixply uses Bluetooth to connect to nearby Pixply boards</string>  
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>The app requests When in Use or Always authorization</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>The app requests Always authorization</string>
-	<key>NSCameraUsageDescription</key>
-    <string>Pixply needs camera access to capture photos and videos of your creations.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Pixply needs photo library access to upload images and videos.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Pixply needs permission to save exported media to your library.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Pixply needs microphone access to record audio with your videos.</string>
+    <string>Pixply needs photo library access only so you can select a cover image for the games you create. These images are visible only to you inside the app and are never uploaded, stored on our servers, or shared with anyone, including the Pixply team.</string>
 	<key>CFBundleName</key>
 	<string>pixply</string>
 	<key>CFBundlePackageType</key>

@@ -315,3 +315,67 @@ Deleted android/app/build.gradle.kts and reverted to the standard Gradle build s
 ### Notes
 - This release ensures private package security while maintaining compatibility with Codemagic free plan.
 - Next release should bump to `1.0.12+102` for production deployment.
+
+## v1.0.43  — 2025-1-9
+### Added
+
+
+### Changed
+
+
+### Fixed
+- 
+
+### Removed
+perimision in the android manifest for instruction.dart pixstudio 
+cammera and galery
+
+### Note 
+good for android 
+
+## v1.0.44  — 2025-1-12
+### Added
+- reset button again
+
+### Changed
+- change display manager and setting for reset button 
+
+### Fixed
+- 
+
+### Removed
+
+### Note 
+good for android 
+
+## v1.0.45  — 2025-1-12
+### Added
+- new file code for reset button and reset button play now 
+
+### Changed
+- change display button play now  when the game reset
+
+### Fixed
+- 
+
+### Removed
+
+### Note 
+good for android 
+
+## v1.0.46  — 2025-1-12
+### Added
+- 
+
+### Changed
+- describtion perimision
+
+### Fixed
+- 
+
+### Removed
+
+perimision in info.plist 
+
+### Note 
+good for ios

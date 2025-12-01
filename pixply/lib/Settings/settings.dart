@@ -9,7 +9,7 @@ import 'package:pixply/games.dart';
 import 'package:pixply/Settings/rotation_config.dart' ;
 import 'package:pixply/Likes/like.dart';
 import 'package:pixply/explore/explore.dart';
-import 'package:pixply/Settings/playback_state.dart';
+// import 'package:pixply/Settings/playback_state.dart';
 // import 'package:flutter_hsvcolor_picker/flutter_hsvcolor_picker.dart';
 import 'dart:math' as math;
 
@@ -144,28 +144,28 @@ void toggleSection(String section) {
 
 
 
-  Future<void> resetToDefaults() async {
-    setState(() {
-      brightness = 0.5;
-      _selectedRotation = ScreenRotation.degree0;
-      selectedColor = Colors.white;
-      expandedSections.updateAll((key, value) => false);
-    });
+  // Future<void> resetToDefaults() async {
+  //   setState(() {
+  //     brightness = 0.5;
+  //     _selectedRotation = ScreenRotation.degree0;
+  //     selectedColor = Colors.white;
+  //     expandedSections.updateAll((key, value) => false);
+  //   });
 
-    // Update global config so that future refreshes/games use the defaults
-    DisplayManager.recordLastDisplay(
-      path: 'assets/logopixply.png',
-      type: DisplayType.image,
-    );
-    ColorConfig.ledMasterBrightness = 0.5;
-    ColorConfig.setColor(Colors.white);
-    RotationStore.setRotation(ScreenRotation.degree0);
-    PlaybackState.notifyReset();
+  //   // Update global config so that future refreshes/games use the defaults
+  //   DisplayManager.recordLastDisplay(
+  //     path: 'assets/logopixply.png',
+  //     type: DisplayType.image,
+  //   );
+  //   ColorConfig.ledMasterBrightness = 0.5;
+  //   ColorConfig.setColor(Colors.white);
+  //   RotationStore.setRotation(ScreenRotation.degree0);
+  //   PlaybackState.notifyReset();
 
-    if (widget.isConnected) {
-      await DisplayManager.refreshDisplay(clearBeforeSend: true);
-    }
-  }
+  //   if (widget.isConnected) {
+  //     await DisplayManager.refreshDisplay(clearBeforeSend: true);
+  //   }
+  // }
   
 
 
@@ -582,13 +582,13 @@ onChanged: (value) async {
               
             ),
 
-            _buildTile(
-              "Reset to Default",
-              resetToDefaults,
-              iconPath: 'assets/reset.svg',
+            // _buildTile(
+            //   "Reset to Default",
+            //   resetToDefaults,
+            //   iconPath: 'assets/reset.svg',
 
               
-            ),
+            // ),
 
           ],
         ),
