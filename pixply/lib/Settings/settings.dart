@@ -9,6 +9,7 @@ import 'package:pixply/games.dart';
 import 'package:pixply/Settings/rotation_config.dart' ;
 import 'package:pixply/Likes/like.dart';
 import 'package:pixply/explore/explore.dart';
+import 'package:pixply/Settings/playback_state.dart';
 // import 'package:flutter_hsvcolor_picker/flutter_hsvcolor_picker.dart';
 import 'dart:math' as math;
 
@@ -159,6 +160,7 @@ void toggleSection(String section) {
     ColorConfig.ledMasterBrightness = 0.5;
     ColorConfig.setColor(Colors.white);
     RotationStore.setRotation(ScreenRotation.degree0);
+    PlaybackState.notifyReset();
 
     if (widget.isConnected) {
       await DisplayManager.refreshDisplay(clearBeforeSend: true);

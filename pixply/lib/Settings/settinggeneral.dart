@@ -13,6 +13,7 @@ import 'package:pixply/Settings/help.dart';
 import 'package:pixply/Settings/youridea.dart';
 import 'package:pixply/explore/explore.dart';
 import 'package:pixply/Likes/like.dart';
+import 'package:pixply/Settings/playback_state.dart';
 // import 'package:pixply/Settings/solid_bmp.dart';
 // import 'package:pixply/UserAccount/user.dart';
 // import 'package:pixply/Settings/termsconditions.dart';
@@ -159,6 +160,7 @@ void toggleSection(String section) {
     ColorConfig.ledMasterBrightness = 0.5;
     ColorConfig.setColor(Colors.white);
     RotationStore.setRotation(ScreenRotation.degree0);
+    PlaybackState.notifyReset();
 
     if (widget.isConnected) {
       await DisplayManager.refreshDisplay(clearBeforeSend: true);

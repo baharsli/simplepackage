@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:pixply/Settings/color_config.dart';
 import 'package:pixply/Settings/displaymanager.dart';
+import 'package:pixply/Settings/playback_state.dart';
 import 'package:pixply/Settings/rotation_config.dart';
 import 'package:image/image.dart' as img;
 import 'package:pixply/explore/yourgame.dart';
@@ -1329,10 +1330,26 @@ class _PlayNowButtonState extends State<PlayNowButton> {
   bool _isCompleted = false;
   bool _localLoading = false;
   Timer? _loadingTimer;
+  late final VoidCallback _resetListener;
   final double buttonWidth = 219;
   final double buttonHeight = 82;
   final double iconSize = 71;
   final double iconPadding = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _isCompleted = widget.initialCompleted;
+    _dragPercent = widget.initialCompleted ? 1.0 : 0.0;
+    _resetListener = () {
+      if (!mounted) return;
+      setState(() {
+        _isCompleted = false;
+        _dragPercent = 0.0;
+      });
+    };
+    PlaybackState.resetNotifier.addListener(_resetListener);
+  }
 
   void _startLoading() {
     setState(() => _localLoading = true);
@@ -1344,16 +1361,9 @@ class _PlayNowButtonState extends State<PlayNowButton> {
 
   @override
   void dispose() {
+    PlaybackState.resetNotifier.removeListener(_resetListener);
     _loadingTimer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize completed state if content already on board
-    _isCompleted = widget.initialCompleted;
-    _dragPercent = widget.initialCompleted ? 1.0 : 0.0;
   }
 
   @override

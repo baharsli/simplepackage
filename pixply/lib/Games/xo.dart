@@ -9,6 +9,7 @@ import 'package:dotted_line/dotted_line.dart';
 import 'package:pixply/Settings/settings.dart';
 import 'package:pixply/Settings/color_config.dart';
 import 'package:pixply/Settings/displaymanager.dart';
+import 'package:pixply/Settings/playback_state.dart';
 import 'package:pixply/Settings/rotation_config.dart';
 // import 'package:pixply/Tools/tools.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -773,10 +774,24 @@ class _PlayNowButtonState extends State<PlayNowButton> {
   bool _isCompleted = false;
   bool _localLoading = false;
   Timer? _loadingTimer;
+  late final VoidCallback _resetListener;
   final double buttonWidth = 219;
   final double buttonHeight = 82;
   final double iconSize = 71;
   final double iconPadding = 5;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetListener = () {
+      if (!mounted) return;
+      setState(() {
+        _isCompleted = false;
+        _dragPercent = 0.0;
+      });
+    };
+    PlaybackState.resetNotifier.addListener(_resetListener);
+  }
 
   void _startLoading() {
     setState(() => _localLoading = true);
@@ -788,6 +803,7 @@ class _PlayNowButtonState extends State<PlayNowButton> {
 
   @override
   void dispose() {
+    PlaybackState.resetNotifier.removeListener(_resetListener);
     _loadingTimer?.cancel();
     super.dispose();
   }
