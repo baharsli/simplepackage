@@ -19,6 +19,7 @@ class DisplayManager {
   static DisplayType? _lastType;
   static bool _initialized = false;
   static bool _refreshInFlight = false;
+  static bool _forceClearPlaylist = false;
   static Timer? _colorDebounce;
   // static Timer? _rotationDebounce; // debounce for rotation changes
   // new
@@ -94,9 +95,17 @@ class DisplayManager {
     }
   }
 
+  static Future<void> refreshDisplay({bool clearBeforeSend = false}) {
+    if (clearBeforeSend) _forceClearPlaylist = true;
+    _pending = true;
+    return _drainRefresh();
+  }
+
   static Future<void> _refreshDisplay() async {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
 
+    final bool forceClear = _forceClearPlaylist;
+    _forceClearPlaylist = false;
     bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
     _lastAppliedRotation = RotationStore.selectedRotation;
 
@@ -122,7 +131,7 @@ class DisplayManager {
 
       // If rotation or content type changed, clear playlist to rebuild cleanly
     bool structuralChange = rotationChanged || _lastType != DisplayType.image;
-    if (structuralChange) {
+    if (forceClear || structuralChange) {
       await _bluetooth!.deleteAllPrograms();
       await _bluetooth!.updatePlaylistComplete();
     }
@@ -136,8 +145,6 @@ class DisplayManager {
         break;
     }
   }
-
-  static Future<void> refreshDisplay() => _refreshDisplay();
 
   /// Send the last image again with the new selected color
   static Future<void> _sendColoredImage(String path) async {
