@@ -233,6 +233,7 @@
 // }
 // --- version 36-------//
 
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:led_ble_lib/led_ble_lib.dart';
@@ -254,6 +255,7 @@ class DisplayManager {
   static DisplayType? _lastType;
   static bool _initialized = false;
   static bool _refreshInFlight = false;
+  static bool _forceClearPlaylist = false;
   static Timer? _colorDebounce;
   // static Timer? _rotationDebounce; // debounce for rotation changes
   // new
@@ -329,11 +331,58 @@ class DisplayManager {
     }
   }
 
+  static Future<void> refreshDisplay({bool clearBeforeSend = false}) {
+    if (clearBeforeSend && Platform.isAndroid) _forceClearPlaylist = true;
+    _pending = true;
+    return _drainRefresh();
+  }
+
   static Future<void> _refreshDisplay() async {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
+    if (Platform.isAndroid) {
+      final bool forceClear = _forceClearPlaylist;
+      _forceClearPlaylist = false;
+      bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
+      _lastAppliedRotation = RotationStore.selectedRotation;
+
+      final bool isImage = _lastType == DisplayType.image;
+      final bool colorOnly = isImage && !rotationChanged;
+
+      // On Android, avoid extra commands when only color changes.
+      if (!colorOnly) {
+        await _bluetooth!.switchLedScreen(true);
+        final brightnessVal = ColorConfig.ledMasterBrightness;
+        Brightness level;
+        if (brightnessVal < 0.33) {
+          level = Brightness.minimum;
+        } else if (brightnessVal < 0.66) {
+          level = Brightness.medium;
+        } else {
+          level = Brightness.high;
+        }
+        await _bluetooth!.setBrightness(level);
+        await _bluetooth!.setRotation(RotationStore.selectedRotation);
+      }
+
+      // If rotation or content type changed, clear playlist to rebuild cleanly
+      bool structuralChange = rotationChanged || _lastType != DisplayType.image;
+      if (forceClear || structuralChange) {
+        await _bluetooth!.deleteAllPrograms();
+        await _bluetooth!.updatePlaylistComplete();
+      }
+
+      switch (_lastType) {
+        case DisplayType.image:
+          await _sendColoredImage(_lastPath!);
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    // iOS path (existing behavior)
     await _bluetooth!.switchLedScreen(true);
-    // await _bluetooth!.setBrightness(Brightness.high);
-    // use master brightness value from settings
     final brightnessVal = ColorConfig.ledMasterBrightness;
     Brightness level;
     if (brightnessVal < 0.33) {
@@ -348,14 +397,12 @@ class DisplayManager {
     bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
     _lastAppliedRotation = RotationStore.selectedRotation;
 
-      // If rotation or content type changed, clear playlist to rebuild cleanly
     bool structuralChange = rotationChanged || _lastType != DisplayType.image;
     if (structuralChange) {
       await _bluetooth!.deleteAllPrograms();
       await _bluetooth!.updatePlaylistComplete();
     }
 
-    // Re-send according to last type
     switch (_lastType) {
       case DisplayType.image:
         await _sendColoredImage(_lastPath!);
@@ -364,8 +411,6 @@ class DisplayManager {
         break;
     }
   }
-
-  static Future<void> refreshDisplay() => _refreshDisplay();
 
   /// Send the last image again with the new selected color
   static Future<void> _sendColoredImage(String path) async {
@@ -383,6 +428,10 @@ class DisplayManager {
       // brightness: 100,
       brightness: (ColorConfig.ledMasterBrightness * 100).clamp(0, 100).round(),
     );
+
+    if (Platform.isAndroid) {
+      await _bluetooth!.deleteAllPrograms();
+    }
 
     await _bluetooth!.addProgramToPlaylist(
       program,

@@ -379,3 +379,21 @@ perimision in info.plist
 
 ### Note 
 good for ios
+
+## v1.0.47  — 2025-3-12
+### Added
+- 
+
+### Changed
+- change size box in help page for box answer 
+- page displaymanager for ios and android 
+
+### Fixed
+- 
+
+### Removed
+
+
+
+### Note 
+Test  for ios and android mixing v 38 and v 36

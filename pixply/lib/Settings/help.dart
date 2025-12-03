@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'dart:math' as math;
 
 class HelpPage extends StatefulWidget {
   const HelpPage({super.key});
@@ -284,10 +285,13 @@ class _HelpPageState extends State<HelpPage> with SingleTickerProviderStateMixin
     );
   }
   Widget _buildFaqExpandedBox(Widget child) {
+    // top padding is twice bottom; give text a bit more breathing room from the top
+    const double topPad = 50;
+    const double bottomPad = 20;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      padding: const EdgeInsets.fromLTRB(20, 25, 20, 30),
+      padding: const EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
       decoration: BoxDecoration(
         color: const Color(0xFF0F0F0F),
         borderRadius: BorderRadius.only(
@@ -304,28 +308,44 @@ class _HelpPageState extends State<HelpPage> with SingleTickerProviderStateMixin
     required String title,
     required Widget expandedChild,
     required bool expanded,
+    double overlap = 30, // about 30 px tucks under the question tile
   }) {
     _faqExpKeys.putIfAbsent(index, () => GlobalKey());
     if (expanded) _captureFaqHeight(index);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: Alignment.topCenter,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final double topOffset = (_tileHeight - overlap).clamp(0, _tileHeight);
+    final double expandedHeight = expanded ? (_faqExpHeights[index] ?? 0) : 0;
+    final double stackHeight = expanded
+        ? math.max(_tileHeight, topOffset + expandedHeight)
+        : _tileHeight;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: Container(
+        height: stackHeight,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            GestureDetector(
-              onTap: () => setState(() => expandedFAQIndex = expanded ? null : index),
-              child: _buildFaqTile(title, expanded: expanded),
-            ),
             if (expanded)
-              KeyedSubtree(
-                key: _faqExpKeys[index],
-                child: _buildFaqExpandedBox(expandedChild),
+              Positioned(
+                top: topOffset,
+                left: 0,
+                right: 0,
+                child: KeyedSubtree(
+                  key: _faqExpKeys[index],
+                  child: _buildFaqExpandedBox(expandedChild),
+                ),
               ),
+            SizedBox(
+              height: _tileHeight,
+              child: GestureDetector(
+                onTap: () => setState(() => expandedFAQIndex = expanded ? null : index),
+                child: _buildFaqTile(title, expanded: expanded),
+              ),
+            ),
           ],
         ),
       ),
