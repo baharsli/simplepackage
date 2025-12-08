@@ -258,7 +258,10 @@ class LedBluetooth {
       }
     }
 
-    return false;
+    // Fallback: allow device to appear so we can inspect its data even if filters missed.
+    logFullMessage(
+        'Non-matching device: advName="$advertisedName", platformName="$platformName", manufacturer=${adv.manufacturerData}');
+    return true;
   }
 
   /// Parse LED device information
