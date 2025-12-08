@@ -1,3 +1,4 @@
+﻿
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:led_ble_lib/led_ble_lib.dart';
@@ -19,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:pixply/core/activation.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // Painter for dotted line
 class _DottedLinePainter extends CustomPainter {
@@ -67,7 +68,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
   StreamSubscription<LedScreen>? _discoverSub;
   StreamSubscription<List<ScanResult>>? _scanSub;
   StreamSubscription<bool>? _connStateSub;
-  // final LedBluetooth _bluetooth = LedBluetooth();
   late final LedBluetooth _bluetooth;
   final List<LedScreen> _discoveredDevices = [];
   final Map<String, BluetoothDevice> _deviceCache = {};
@@ -86,7 +86,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
   // Long-press timer for games icon
   Timer? _iconHoldTimer;
   bool _iconHoldFired = false;
-  // legacy BLE protocol reporting removed
 
   // Removed: pre-permission sheet. We now rely solely on OS dialogs.
 
@@ -193,8 +192,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
   void initState() {
     super.initState();
     _bluetooth = widget.bluetooth;
-    // Run permissions first, then init Bluetooth to avoid race/lag
-    // _isConnected = widget.isConnected || _bluetooth.isConnected;
     _boot();
     LikeService.syncLikesToServer();
 
@@ -257,7 +254,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                 })
             .toList();
         details['deviceId'] = dev.idString;
-        details['deviceName'] = _bluetooth.connectedDeviceName ?? dev.nameString;
+        details['deviceName'] = dev.nameString;
         details['services'] = servicesJson;
       }
       if (_selectedDevice != null) {
@@ -272,10 +269,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
     final already = await ActivationService().isActivated();
     if (already) return;
     _activationPromptShown = true;
-    // final ip = await _publicIp();
     final ble = await _collectBleDetails();
     final extras = <String, dynamic>{
-      // if (ip != null) 'ip': ip, // override ActivationService null
       if (ble.isNotEmpty) 'ble': ble,
     };
 
@@ -327,7 +322,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       setState(() => submitting = false);
                       if (res == ActivationResult.allow) {
                         Navigator.of(ctx).pop();
-                        // Navigate only if connected too; otherwise stay on this page
                         if (_isConnected) {
                           Navigator.pushReplacement(
                             context,
@@ -371,7 +365,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                           setState(() => submitting = false);
                           if (res == ActivationResult.allow) {
                             Navigator.of(ctx).pop();
-                            // Navigate only if connected; otherwise stay
                             if (_isConnected) {
                               Navigator.pushReplacement(
                                 context,
@@ -399,7 +392,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                                         Text('Activation failed. Try again.')));
                           }
                         },
-                  child: Text(submitting ? 'SubmittingÃ¢â‚¬Â¦' : 'Submit'),
+                  child: Text(submitting ? 'Submitting...' : 'Submit'),
                 ),
               ],
             ),
@@ -413,7 +406,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
   /// Uses a separate webhook so this flow is independent from the main app
   /// activation scenario, but still shares the same ActivationService logic.
   Future<void> _promptActivationWithoutBoard() async {
-    // final ip = await _publicIp();
     final controller = TextEditingController();
     bool submitting = false;
     if (!mounted) return;
@@ -460,9 +452,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
                       enforce16CharCodes: false,
                     );
                     final extras = <String, dynamic>{
-                      'flow': 'no_board', // mark this pathway in Make scenario
-                      'code': controller.text.trim(), // override formatted code
-                      // if (ip != null) 'ip': ip,
+                      'flow': 'no_board',
+                      'code': controller.text.trim(),
                     };
                     final res =
                         await service.activate(controller.text, extra: extras);
@@ -487,7 +478,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
                         final extras = <String, dynamic>{
                           'flow': 'no_board',
                           'code': controller.text.trim(),
-                          // if (ip != null) 'ip': ip,
                         };
                         final res = await service.activate(controller.text,
                             extra: extras);
@@ -495,7 +485,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                         setState(() => submitting = false);
                         _handleNoBoardActivationResult(ctx, res);
                       },
-                child: Text(submitting ? 'SubmittingÃ¢â‚¬Â¦' : 'Submit'),
+                child: Text(submitting ? 'Submitting...' : 'Submit'),
               ),
             ],
           );
@@ -528,10 +518,10 @@ class _ConnectionPageState extends State<ConnectionPage> {
     }
   }
 
-	  void _startIconHoldTimer() {
-	    _iconHoldTimer?.cancel();
-	    _iconHoldFired = false;
-	    _iconHoldTimer = Timer(const Duration(seconds: 2), () async {
+  void _startIconHoldTimer() {
+    _iconHoldTimer?.cancel();
+    _iconHoldFired = false;
+    _iconHoldTimer = Timer(const Duration(seconds: 2), () async {
       if (!mounted) return;
       _iconHoldFired = true;
       final activated = await ActivationService().isActivated();
@@ -552,42 +542,42 @@ class _ConnectionPageState extends State<ConnectionPage> {
     _iconHoldTimer = null;
   }
 
-	  Future<void> _onGamesIconTapUp() async {
-	    final alreadyFired = _iconHoldFired;
-	    _cancelIconHoldTimer();
-	    if (alreadyFired) return; // long-hold already handled popup
-	
-	    final service = ActivationService();
-	    final alreadyActivated = await service.isActivated();
-	
-	    if (_isConnected) {
-	      if (!alreadyActivated) {
-	        return;
-	      }
-	      Navigator.push(
-	        context,
-	        MaterialPageRoute(
-	          builder: (context) => GamesScreen(
-	            bluetooth: _bluetooth,
-	            isConnected: _isConnected,
-	          ),
-	        ),
-	      );
-	    } else {
-	      if (!alreadyActivated) {
-	        return;
-	      }
-	      Navigator.push(
-	        context,
-	        MaterialPageRoute(
-	          builder: (context) => GamesScreen(
-	            bluetooth: _bluetooth,
-	            isConnected: false,
-	          ),
-	        ),
-	      );
-	    }
-	  }
+  Future<void> _onGamesIconTapUp() async {
+    final alreadyFired = _iconHoldFired;
+    _cancelIconHoldTimer();
+    if (alreadyFired) return;
+
+    final service = ActivationService();
+    final alreadyActivated = await service.isActivated();
+
+    if (_isConnected) {
+      if (!alreadyActivated) {
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => GamesScreen(
+            bluetooth: _bluetooth,
+            isConnected: _isConnected,
+          ),
+        ),
+      );
+    } else {
+      if (!alreadyActivated) {
+        return;
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => GamesScreen(
+            bluetooth: _bluetooth,
+            isConnected: false,
+          ),
+        ),
+      );
+    }
+  }
 
   Future<void> _cacheLastMacDevice(LedScreen device) async {
     try {
@@ -609,81 +599,77 @@ class _ConnectionPageState extends State<ConnectionPage> {
 
   @override
   Widget build(BuildContext context) {
-	    return Scaffold(
-	      // appBar: AppBar(
-	      //   backgroundColor: Colors.black,
-	      //   elevation: 0,
-	      // ),
-	      backgroundColor: Colors.black,
-	      body: SafeArea(
-	        child: Column(
-	          children: [
-	            Padding(
-	              padding: const EdgeInsets.only(
-	                  top: 20, left: 20, right: 20, bottom: 20),
-	              child: Row(
-	                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-	                children: [
-	                  // Refresh / scan icon (fresh.svg)
-		                  GestureDetector(
-		                    onTap: () {
-		                      if (_isScanning) {
-		                        _stopScan();
-		                      } else {
-		                        _startScan();
-		                      }
-		                    },
-		                    child: Container(
-		                      width: 71,
-		                      height: 71,
-		                      decoration: BoxDecoration(
-		                        shape: BoxShape.circle,
-		                        color: Colors.white10,
-		                      ),
-		                      alignment: Alignment.center,
-		                      child: _isScanning
-		                          ? const SizedBox(
-		                              width: 22,
-		                              height: 22,
-		                              child: CircularProgressIndicator(
-		                                strokeWidth: 2,
-		                                color: Colors.white,
-		                              ),
-		                            )
-		                          : SvgPicture.asset(
-		                              'assets/fresh.svg',
-		                              width: 32,
-		                              height: 32,
-		                              colorFilter: const ColorFilter.mode(
-		                                Colors.white,
-		                                BlendMode.srcIn,
-		                              ),
-		                            ),
-		                    ),
-		                  ),
-	                  // Back-to-games icon
-	                  GestureDetector(
-	                    behavior: HitTestBehavior.opaque,
-	                    onTapDown: (_) => _startIconHoldTimer(),
-	                    onTapUp: (_) => _onGamesIconTapUp(),
-	                    onTapCancel: _cancelIconHoldTimer,
-	                    child: Container(
-	                      width: 71,
-	                      height: 71,
-	                      decoration: const BoxDecoration(
-	                        shape: BoxShape.circle,
-	                        color: Colors.white10,
-	                      ),
-	                      alignment: Alignment.center,
-	                      child: const Icon(
-	                        Icons.arrow_forward_ios,
-	                        color: Colors.white,
-	                      ),
-	                    ),
-	                  ),
-	                ],
-	              ),
-	            ),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                  top: 20, left: 20, right: 20, bottom: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Refresh / scan icon (fresh.svg)
+                  GestureDetector(
+                    onTap: () {
+                      if (_isScanning) {
+                        _stopScan();
+                      } else {
+                        _startScan();
+                      }
+                    },
+                    child: Container(
+                      width: 71,
+                      height: 71,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white10,
+                      ),
+                      alignment: Alignment.center,
+                      child: _isScanning
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : SvgPicture.asset(
+                              'assets/fresh.svg',
+                              width: 32,
+                              height: 32,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                    ),
+                  ),
+                  // Back-to-games icon
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (_) => _startIconHoldTimer(),
+                    onTapUp: (_) => _onGamesIconTapUp(),
+                    onTapCancel: _cancelIconHoldTimer,
+                    child: Container(
+                      width: 71,
+                      height: 71,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white10,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Text(
               "Search",
               style: TextStyle(
@@ -714,7 +700,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
               child: CustomPaint(
                 size: const Size(double.infinity, 1),
                 painter: _DottedLinePainter(
-                  color: Color.fromARGB(255, 255, 255, 255),
+                  color: const Color.fromARGB(255, 255, 255, 255),
                   strokeWidth: 1.0,
                   dashWidth: 4.0,
                   dashGap: 3.0,
@@ -779,7 +765,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
               child: CustomPaint(
                 size: const Size(double.infinity, 1),
                 painter: _DottedLinePainter(
-                  color: Color(0xFF8B8B8B),
+                  color: const Color(0xFF8B8B8B),
                   strokeWidth: 1.0,
                   dashWidth: 4.0,
                   dashGap: 3.0,
@@ -835,14 +821,13 @@ class _ConnectionPageState extends State<ConnectionPage> {
     _discoverSub?.cancel();
     _scanSub?.cancel();
     _connStateSub?.cancel();
-    // _bluetooth.dispose();
     super.dispose();
   }
 
   Future<void> _initBluetooth() async {
     // Initialize Bluetooth
     await _bluetooth.initialize();
-  
+
     // Listen for device discovery events
     _discoverSub = _bluetooth.onDeviceDiscovered.listen((device) {
       setState(() {
@@ -852,7 +837,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       });
     });
 
-    _scanSub = _scanSub = FlutterBluePlus.scanResults.listen((results) {
+    _scanSub = FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
         final id = result.device.remoteId.str.toUpperCase();
         _deviceCache[id] = result.device;
@@ -860,9 +845,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
         _deviceCache[normalized] = result.device;
       }
     });
-  
     // Listen for connection state changes
-    _connStateSub = _connStateSub = _bluetooth.onConnectionStateChanged.listen((connected) async {
+    _connStateSub = _bluetooth.onConnectionStateChanged.listen((connected) async {
       setState(() {
         _isConnected = connected;
         if (!connected) {
@@ -872,13 +856,13 @@ class _ConnectionPageState extends State<ConnectionPage> {
           _activationPromptShown = false;
         }
       });
-  
+
       if (!mounted || !connected) return;
       // Stop scanning early on connect
       if (_isScanning) {
         _stopScan();
       }
-  
+
       // Gate navigation by activation status
       final activated = await ActivationService().isActivated();
       if (!activated) {
@@ -888,7 +872,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
         }
         return;
       }
-  
+
       // Only if already activated, show ConnectedScreen animation once
       if (!_navigatedToConnected) {
         _navigatedToConnected = true;
@@ -948,10 +932,8 @@ class _ConnectionPageState extends State<ConnectionPage> {
             height: ledHeight,
             colorType:
                 _selectedDevice?.colorType ?? LedColorType.monochrome,
-            rotation:
-                _selectedDevice?.rotation ?? ScreenRotation.degree0,
-            firmwareVersion:
-                _selectedDevice?.firmwareVersion ?? '',
+            rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
+            firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
             device: r.device,
           );
           final success = await _bluetooth.connect(ledScreen);
@@ -1036,7 +1018,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
     );
   }
 
-//new
+  //new
   Future<void> _sendTextProgram() async {
     if (!_isConnected) {
       _showMessage('Please connect to a device first');
@@ -1160,9 +1142,6 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
 
   Future<bool> _requestPermissions() async {
-
-
-
     if (Platform.isAndroid) {
       final sdk = await _androidSdkInt();
 

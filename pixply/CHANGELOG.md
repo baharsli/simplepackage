@@ -433,3 +433,21 @@ Test  for ios and android mixing v 38 and v 36
 
 ### Note 
 Test  for ios and android 
+
+## v1.0.56  — 2025-8-12
+### Added
+- 
+
+### Changed
+
+- connection.dart & welcomepage.dart & led-ble-base.dart & led-screen.dart  checkblutooth.dart change  
+
+### Fixed
+- 
+
+### Removed
+
+
+
+### Note 
+Good   for  android  v 57 not good for ios 

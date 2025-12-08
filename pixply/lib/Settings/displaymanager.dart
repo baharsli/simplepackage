@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:led_ble_lib/led_ble_lib.dart';
 import 'package:pixply/Settings/color_config.dart';
 import 'package:pixply/Settings/rotation_config.dart';
-import 'dart:async';
 
 /// Constants for LED panel dimensions
 int ledWidth = 56;
@@ -21,8 +21,6 @@ class DisplayManager {
   static bool _refreshInFlight = false;
   static bool _forceClearPlaylist = false;
   static Timer? _colorDebounce;
-  // static Timer? _rotationDebounce; // debounce for rotation changes
-  // new
   static bool _pending = false;
 
   static ScreenRotation? _lastAppliedRotation;
@@ -34,7 +32,6 @@ class DisplayManager {
     _initialized = true;
     ColorConfig.addListener(_onColorChanged);
     RotationStore.addListener(_onRotationChanged);
-
     _lastAppliedRotation = RotationStore.selectedRotation;
   }
 
@@ -47,10 +44,6 @@ class DisplayManager {
     _lastType = type;
   }
 
-  /// Read-only accessors for last recorded content
-  // static String? get lastPath => _lastPath;
-  // static DisplayType? get lastType => _lastType;
-
   /// Automatically called when color changes
   static Future<void> _onColorChanged(Color newColor) async {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
@@ -58,22 +51,17 @@ class DisplayManager {
     _pending = true;
     _colorDebounce?.cancel();
     _colorDebounce = Timer(const Duration(milliseconds: 180), () async {
-      // Always attempt to drain pending updates. Internal guard prevents overlap.
       await _drainRefresh();
     });
   }
 
   static Future<void> _onRotationChanged(ScreenRotation newRotation) async {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
-    // Mark pending and drain immediately (we want rotation to apply quickly)
     _pending = true;
     await _drainRefresh();
   }
 
-  // new
   static Future<void> _drainRefresh() async {
-    // If a refresh is already running, mark pending and exit; the finally block
-    // at the end of that run will schedule another drain if needed.
     if (_refreshInFlight) {
       _pending = true;
       return;
@@ -86,15 +74,13 @@ class DisplayManager {
       }
     } finally {
       _refreshInFlight = false;
-      // If new changes came in during refresh, drain again in a microtask.
       if (_pending) {
-        scheduleMicrotask(() {
-          _drainRefresh();
-        });
+        scheduleMicrotask(_drainRefresh);
       }
     }
   }
 
+  /// External refresh entrypoint. If [clearBeforeSend] is true, force clear playlist before sending.
   static Future<void> refreshDisplay({bool clearBeforeSend = false}) {
     if (clearBeforeSend) _forceClearPlaylist = true;
     _pending = true;
@@ -106,37 +92,30 @@ class DisplayManager {
 
     final bool forceClear = _forceClearPlaylist;
     _forceClearPlaylist = false;
-    bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
+    final bool rotationChanged = _lastAppliedRotation != RotationStore.selectedRotation;
     _lastAppliedRotation = RotationStore.selectedRotation;
 
-    final bool isImage = _lastType == DisplayType.image;
-    final bool colorOnly = isImage && !rotationChanged;
-
-    // Only touch power/brightness/rotation when needed (not on pure color change)
-    if (!colorOnly) {
-      await _bluetooth!.switchLedScreen(true);
-      // use master brightness value from settings
-      final brightnessVal = ColorConfig.ledMasterBrightness;
-      Brightness level;
-      if (brightnessVal < 0.33) {
-        level = Brightness.minimum;
-      } else if (brightnessVal < 0.66) {
-        level = Brightness.medium;
-      } else {
-        level = Brightness.high;
-      }
-      await _bluetooth!.setBrightness(level);
-      await _bluetooth!.setRotation(RotationStore.selectedRotation);
+    // Power on, brightness, and rotation
+    await _bluetooth!.switchLedScreen(true);
+    final brightnessVal = ColorConfig.ledMasterBrightness;
+    final Brightness level;
+    if (brightnessVal < 0.33) {
+      level = Brightness.minimum;
+    } else if (brightnessVal < 0.66) {
+      level = Brightness.medium;
+    } else {
+      level = Brightness.high;
     }
+    await _bluetooth!.setBrightness(level);
+    await _bluetooth!.setRotation(RotationStore.selectedRotation);
 
-      // If rotation or content type changed, clear playlist to rebuild cleanly
-    bool structuralChange = rotationChanged || _lastType != DisplayType.image;
+    // If rotation or content type changed, clear playlist to rebuild cleanly
+    final bool structuralChange = rotationChanged || _lastType != DisplayType.image;
     if (forceClear || structuralChange) {
       await _bluetooth!.deleteAllPrograms();
       await _bluetooth!.updatePlaylistComplete();
     }
 
-    // Re-send according to last type
     switch (_lastType) {
       case DisplayType.image:
         await _sendColoredImage(_lastPath!);
@@ -159,11 +138,10 @@ class DisplayManager {
       speed: 50,
       stayTime: 300000,
       circularBorder: 0,
-      // brightness: 100,
       brightness: (ColorConfig.ledMasterBrightness * 100).clamp(0, 100).round(),
     );
 
-    // Clear previous playlist so the new colored frame doesn't mix with old content.
+    // Clear previous playlist so new frame doesn't mix with old content.
     await _bluetooth!.deleteAllPrograms();
 
     await _bluetooth!.addProgramToPlaylist(
@@ -173,7 +151,6 @@ class DisplayManager {
       playbackCount: 1,
       circularBorder: 0,
     );
-    // new
     final ok = await _bluetooth!.updatePlaylistComplete();
     if (!ok) {
       await Future.delayed(const Duration(milliseconds: 200));
@@ -183,7 +160,7 @@ class DisplayManager {
 
   /// Apply current color to image using luminance logic
   static Future<Uint8List> _loadColoredBmp(String path) async {
-    ByteData data = await rootBundle.load(path);
+    final ByteData data = await rootBundle.load(path);
     final img.Image? original = img.decodeImage(data.buffer.asUint8List());
     if (original == null) throw Exception('Image decode failed');
 
