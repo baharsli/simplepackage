@@ -397,3 +397,21 @@ good for ios
 
 ### Note 
 Test  for ios and android mixing v 38 and v 36
+
+## v1.0.48  — 2025-8-12
+### Added
+- 
+
+### Changed
+- change  ['iledcolor-', 'pix']; in led ble base to  ['iledcolor-', 'Pix-'];
+
+
+### Fixed
+- 
+
+### Removed
+
+
+
+### Note 
+Test  for ios and android mixing v 38 and v 36

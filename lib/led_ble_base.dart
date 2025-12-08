@@ -25,7 +25,7 @@ class LedBluetooth {
   static const String _notifyCharacteristicUuid = '0000a953-0000-1000-8000-00805f9b34fb';
 
   /// Advertisement name prefix
-static const List<String> _advertisementNamePrefixes = ['iledcolor-', 'pix'];
+static const List<String> _advertisementNamePrefixes = ['iledcolor-', 'Pix-'];
 
   /// Advertisement filter name
   static const List<int> _advertisementFilterName = [0x54, 0x42, 0x44, 0x02];
