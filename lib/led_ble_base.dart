@@ -229,13 +229,18 @@ class LedBluetooth {
     }
   }
 
-  /// Check if it's an LED device
-  bool _isLedDevice(ScanResult result) {
-    // Prefer advertised name (advName/localName) because platformName may be empty until after connect
+  String _resolveName(ScanResult result) {
     final adv = result.advertisementData;
     final advertisedName = adv.advName.trim();
     final platformName = result.device.platformName.trim();
-    final name = advertisedName.isNotEmpty ? advertisedName : platformName;
+    if (advertisedName.isNotEmpty) return advertisedName;
+    return platformName;
+  }
+
+  /// Check if it's an LED device
+  bool _isLedDevice(ScanResult result) {
+    final adv = result.advertisementData;
+    final name = _resolveName(result);
     final lowerName = name.toLowerCase();
     final matchesName = _advertisementNamePrefixes.any(
         (prefix) => lowerName.startsWith(prefix.toLowerCase()));
@@ -260,17 +265,14 @@ class LedBluetooth {
 
     // Fallback: allow device to appear so we can inspect its data even if filters missed.
     logFullMessage(
-        'Non-matching device: advName="$advertisedName", platformName="$platformName", manufacturer=${adv.manufacturerData}');
+        'Non-matching device: name="$name", advName="${adv.advName}", platformName="${result.device.platformName}", manufacturer=${adv.manufacturerData}');
     return true;
   }
 
   /// Parse LED device information
   LedScreen _parseLedDevice(ScanResult result) {
     List<int>? manufacturerData;
-    final adv = result.advertisementData;
-    final advertisedName = adv.advName.trim();
-    final deviceName =
-        advertisedName.isNotEmpty ? advertisedName : result.device.platformName;
+    final deviceName = _resolveName(result);
 
     // Get manufacturer data
     if (result.advertisementData.manufacturerData.isNotEmpty) {
