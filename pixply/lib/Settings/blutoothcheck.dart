@@ -77,33 +77,7 @@ class _BluetoothCheckPageState extends State<BluetoothCheckPage> {
   }
 
   Future<void> _connect(LedScreen screen) async {
-    BluetoothDevice? target;
-
-    // try from currently connected list
-    for (final d in FlutterBluePlus.connectedDevices) {
-      if (d.remoteId.str.toUpperCase() == screen.macAddress) {
-        target = d;
-        break;
-      }
-    }
-
-    // else try from latest scan results
-    if (target == null) {
-      final results = await FlutterBluePlus.scanResults.first;
-      for (final r in results) {
-        if (r.device.remoteId.str.toUpperCase() == screen.macAddress) {
-          target = r.device;
-          break;
-        }
-      }
-    }
-
-    if (target == null) {
-      _toast('Bluetooth device not found');
-      return;
-    }
-
-    final ok = await _bluetooth.connect(target);
+    final ok = await _bluetooth.connect(screen);
     if (!ok) {
       _toast('Failed to connect');
       return;
@@ -111,7 +85,7 @@ class _BluetoothCheckPageState extends State<BluetoothCheckPage> {
 
     setState(() {
       _selected = screen;
-      _btDevice = target;
+      _btDevice = screen.device;
     });
     _toast('Connected');
   }

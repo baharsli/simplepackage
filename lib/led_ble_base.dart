@@ -24,18 +24,17 @@ class LedBluetooth {
   /// Notification characteristic UUID
   static const String _notifyCharacteristicUuid = '0000a953-0000-1000-8000-00805f9b34fb';
 
-  /// Write characteristic UUID for Pix firmware.  The AE00 service exposes
-  /// AE01 as a write characteristic (typically without response) and AE02 as
-  /// a notify characteristic.  We map AE01 to both the small and large
-  /// write characteristics when using the Pix service.
+  /// Write characteristic UUID for Pix firmware (AE01).  When the AE00 service
+  /// is present, AE01 is used for both small and large writes, and AE02 for
+  /// notifications.  We only use these characteristics if the legacy
+  /// A951/A952/A953 characteristics are absent.
   static const String _altWriteCharacteristicUuid = '0000ae01-0000-1000-8000-00805f9b34fb';
   static const String _altNotifyCharacteristicUuid = '0000ae02-0000-1000-8000-00805f9b34fb';
 
   /// Advertisement name prefixes (support legacy and new names).
   ///
-  /// Different firmware revisions may advertise with or without a trailing
-  /// hyphen and may vary in case.  To maximise compatibility we lower‑case
-  /// device names before matching against these prefixes.
+  /// Newer Pix firmware sometimes drops the hyphen or varies case, so we
+  /// include multiple prefixes.  Matching is performed case‑insensitively.
   static const List<String> _advertisementNamePrefixes = [
     'pix',
     'pix-',
@@ -43,21 +42,21 @@ class LedBluetooth {
     'iledcolor-'
   ];
 
-  /// Known manufacturer signatures.  Each entry describes the first four
-  /// bytes of the manufacturer payload following the company ID.  We
-  /// recognise both the legacy "TBD02" signature (0x54,0x42,0x44,0x02)
-  /// and the newer Pix signature (0x42,0x44,0x02,0x00).  If a device's
-  /// manufacturer data begins with any of these signatures we will
-  /// consider it a candidate LED screen regardless of its advertised name.
+  /// Known manufacturer signatures.  Each entry represents the first
+  /// four bytes of the manufacturer payload following the company ID.
+  /// The legacy TBD boards begin with 0x54,0x42,0x44,0x02 ("TBD\x02"),
+  /// whereas newer Pix boards begin with 0x42,0x44,0x02,0x00.  We match
+  /// against any of these signatures when scanning.
   static const List<List<int>> _manufacturerSignatures = [
-    [0x54, 0x42, 0x44, 0x02], // legacy TBD02 pattern
-    [0x42, 0x44, 0x02, 0x00], // Pix pattern
+    [0x54, 0x42, 0x44, 0x02], // legacy TBD signature
+    [0x42, 0x44, 0x02, 0x00], // Pix signature
   ];
 
-  /// Secondary BLE service UUID for Pix firmware (AE00).  Some new
-  /// boards advertise this service in addition to or instead of the
-  /// legacy A950 service.  We will search for characteristics on both.
+  /// Alternative BLE service UUID introduced by Pix firmware.  Some boards
+  /// advertise this service (AE00) in addition to the legacy A950 service.
+  /// The AE01 characteristic is used for writes and AE02 for notifications.
   static const String _altServiceUuid = '0000ae00-0000-1000-8000-00805f9b34fb';
+
 
   /// Identification code
   static const int _identificationCode = 0x54;
@@ -73,8 +72,10 @@ class LedBluetooth {
 
   /// Currently connected device
   BluetoothDevice? _connectedDevice;
+  String? _connectedDeviceName;
 
   BluetoothDevice? get connectedDevice => _connectedDevice;
+  String? get connectedDeviceName => _connectedDeviceName;
 
   /// Write characteristic (small data)
   BluetoothCharacteristic? _writeSmallCharacteristic;
@@ -183,7 +184,8 @@ class LedBluetooth {
   }
 
   /// Connect to device
-  Future<bool> connect(BluetoothDevice device) async {
+  Future<bool> connect(LedScreen ledScreen) async {
+    final BluetoothDevice device = ledScreen.device;
     try {
       // Disconnect previous connection
       if (_connectedDevice != null) {
@@ -193,53 +195,67 @@ class LedBluetooth {
       // Connect to device
       await device.connect(autoConnect: false, timeout: const Duration(seconds: 15));
       _connectedDevice = device;
+      _connectedDeviceName = ledScreen.name;
 
       // Discover services
-      List<BluetoothService> services = await device.discoverServices();
+      final services = await device.discoverServices();
 
-      // Find required characteristics
-      for (BluetoothService service in services) {
+      // Find required characteristics.  We prioritise the legacy service
+      // (A950) and only fall back to the Pix AE00 service if the legacy
+      // characteristics are not present.  Doing so avoids overriding
+      // working characteristics on devices that implement both services.
+      for (final service in services) {
         final suuid = service.uuid.str128.toLowerCase();
         logFullMessage('service uuid: ${service.uuid.str128}');
-        // We support both the legacy A950 service and the new AE00 service
-        if (suuid == _serviceUuid.toLowerCase() || suuid == _altServiceUuid.toLowerCase()) {
-          for (BluetoothCharacteristic characteristic in service.characteristics) {
-            final uuid = characteristic.uuid.str128.toLowerCase();
-            // Legacy characteristics
-            if (uuid == _writeSmallCharacteristicUuid.toLowerCase()) {
-              _writeSmallCharacteristic = characteristic;
-            } else if (uuid == _writeLargeCharacteristicUuid.toLowerCase()) {
-              _writeLargeCharacteristic = characteristic;
-            } else if (uuid == _notifyCharacteristicUuid.toLowerCase()) {
-              _notifyCharacteristic = characteristic;
-            }
-            // Pix (AE00) characteristics
-            else if (uuid == _altWriteCharacteristicUuid.toLowerCase()) {
-              // The Pix service uses a single write characteristic for both
-              // small and large payloads.
-              _writeSmallCharacteristic = characteristic;
-              _writeLargeCharacteristic = characteristic;
-            } else if (uuid == _altNotifyCharacteristicUuid.toLowerCase()) {
-              _notifyCharacteristic = characteristic;
+        if (suuid == _serviceUuid.toLowerCase()) {
+          for (final characteristic in service.characteristics) {
+            final cuuid = characteristic.uuid.str128.toLowerCase();
+            if (cuuid == _writeSmallCharacteristicUuid.toLowerCase()) {
+              _writeSmallCharacteristic ??= characteristic;
+            } else if (cuuid == _writeLargeCharacteristicUuid.toLowerCase()) {
+              _writeLargeCharacteristic ??= characteristic;
+            } else if (cuuid == _notifyCharacteristicUuid.toLowerCase()) {
+              _notifyCharacteristic ??= characteristic;
             }
           }
-          // Subscribe to notifications if we found a notify characteristic in this service
-          if (_notifyCharacteristic != null) {
-            await _notifyCharacteristic!.setNotifyValue(true);
-            _notifyCharacteristic!.lastValueStream.listen((data) {
-              _notificationDataController.add(data);
-            });
+        }
+      }
+      // If we didn't find all required legacy characteristics, try the Pix service
+      if (_writeSmallCharacteristic == null ||
+          _writeLargeCharacteristic == null ||
+          _notifyCharacteristic == null) {
+        for (final service in services) {
+          final suuid = service.uuid.str128.toLowerCase();
+          if (suuid == _altServiceUuid.toLowerCase()) {
+            for (final characteristic in service.characteristics) {
+              final cuuid = characteristic.uuid.str128.toLowerCase();
+              if (cuuid == _altWriteCharacteristicUuid.toLowerCase()) {
+                _writeSmallCharacteristic ??= characteristic;
+                _writeLargeCharacteristic ??= characteristic;
+              } else if (cuuid == _altNotifyCharacteristicUuid.toLowerCase()) {
+                _notifyCharacteristic ??= characteristic;
+              }
+            }
           }
         }
       }
 
-      // Check if all required characteristics were found
+      // Check if we were able to assign write and notify characteristics
       if (_writeSmallCharacteristic == null ||
           _writeLargeCharacteristic == null ||
           _notifyCharacteristic == null) {
+        // Not enough characteristics to communicate
         await disconnect();
         return false;
       }
+
+      // Subscribe to notifications
+      await _notifyCharacteristic!.setNotifyValue(true);
+      _notifyCharacteristic!.lastValueStream.listen((data) {
+        _notificationDataController.add(data);
+      });
+
+      // Connected successfully
       _connectionStateController.add(true);
       return true;
     } catch (e) {
@@ -259,6 +275,7 @@ class LedBluetooth {
 
         await _connectedDevice!.disconnect();
         _connectedDevice = null;
+        _connectedDeviceName = null;
         _writeSmallCharacteristic = null;
         _writeLargeCharacteristic = null;
         _notifyCharacteristic = null;
@@ -287,11 +304,10 @@ class LedBluetooth {
         (prefix) => lowerName.startsWith(prefix.toLowerCase()));
     if (matchesName) return true;
 
-    // If name did not match, try manufacturer signatures.
+    // If name did not match, try known manufacturer signatures.
     if (adv.manufacturerData.isNotEmpty) {
       for (var entry in adv.manufacturerData.entries) {
         final data = entry.value;
-        // iterate over known signatures
         for (final sig in _manufacturerSignatures) {
           if (data.length >= sig.length) {
             bool matches = true;
@@ -347,12 +363,12 @@ class LedBluetooth {
     }
 
 
-    // If manufacturer data not found, use default values.  We insert the
-    // first known manufacturer signature (legacy TBD02) as the filter bytes
-    // so that downstream parsing behaves as expected.
+    // If manufacturer data not found, use default values.  We insert the first
+    // known signature (legacy TBD) so that downstream parsing behaves
+    // predictably.
     manufacturerData ??= [
         0x01, // Product type
-        ..._manufacturerSignatures.first, // Filter bytes
+        ..._manufacturerSignatures.first,
         0x00, 0x0C, // Screen height (12)
         0x00, 0x30, // Screen width (48)
         0x01, // Screen color type (monochrome)
@@ -368,6 +384,7 @@ class LedBluetooth {
       manufacturerData,
       deviceName,
       result.device.remoteId.str,
+      result.device,
     );
   }
 

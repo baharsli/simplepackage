@@ -246,7 +246,17 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
     try {
       for (final d in FlutterBluePlus.connectedDevices) {
         if (d.remoteId.str.toUpperCase() == lastMac) {
-          final ok = await widget.bluetooth.connect(d);
+          final ledScreen = LedScreen(
+            name: d.platformName,
+            macAddress: d.remoteId.str.toUpperCase(),
+            width: 56,
+            height: 56,
+            colorType: LedColorType.monochrome,
+            rotation: ScreenRotation.degree0,
+            firmwareVersion: '',
+            device: d,
+          );
+          final ok = await widget.bluetooth.connect(ledScreen);
           if (ok) {
             await _sendLogoAfterConnect();
           }
@@ -261,7 +271,25 @@ class _WelcomePageState extends State<WelcomePage> with SingleTickerProviderStat
       }
       await widget.bluetooth.stopScan();
       if (found == null) return false;
-      final ok = await widget.bluetooth.connect(found);
+      final advName = results
+          .firstWhere((r) => r.device.remoteId.str.toUpperCase() == lastMac,
+              orElse: () => results.first)
+          .advertisementData
+          .advName
+          .trim();
+      final resolvedName =
+          advName.isNotEmpty ? advName : found.platformName;
+      final ledScreen = LedScreen(
+        name: resolvedName,
+        macAddress: lastMac,
+        width: 56,
+        height: 56,
+        colorType: LedColorType.monochrome,
+        rotation: ScreenRotation.degree0,
+        firmwareVersion: '',
+        device: found,
+      );
+      final ok = await widget.bluetooth.connect(ledScreen);
       if (ok) {
         await _sendLogoAfterConnect();
       }

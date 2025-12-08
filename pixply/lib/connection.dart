@@ -257,7 +257,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
                 })
             .toList();
         details['deviceId'] = dev.idString;
-        details['deviceName'] = dev.nameString;
+        details['deviceName'] = _bluetooth.connectedDeviceName ?? dev.nameString;
         details['services'] = servicesJson;
       }
       if (_selectedDevice != null) {
@@ -938,20 +938,27 @@ class _ConnectionPageState extends State<ConnectionPage> {
       for (final r in results) {
         if (r.device.remoteId.str.toUpperCase() == lastMac) {
           await _bluetooth.stopScan();
-          final success = await _bluetooth.connect(r.device);
+          final advName = r.advertisementData.advName.trim();
+          final resolvedName =
+              advName.isNotEmpty ? advName : r.device.platformName;
+          final ledScreen = LedScreen(
+            name: resolvedName,
+            macAddress: lastMac,
+            width: ledWidth,
+            height: ledHeight,
+            colorType:
+                _selectedDevice?.colorType ?? LedColorType.monochrome,
+            rotation:
+                _selectedDevice?.rotation ?? ScreenRotation.degree0,
+            firmwareVersion:
+                _selectedDevice?.firmwareVersion ?? '',
+            device: r.device,
+          );
+          final success = await _bluetooth.connect(ledScreen);
           if (success) {
             setState(() {
-              _selectedDevice = LedScreen(
-                name: r.device.platformName,
-                macAddress: lastMac,
-                width: ledWidth,
-                height: ledHeight,
-                colorType:
-                    _selectedDevice?.colorType ?? LedColorType.monochrome,
-                rotation: _selectedDevice?.rotation ?? ScreenRotation.degree0,
-                firmwareVersion: _selectedDevice?.firmwareVersion ?? '',
-              );
-              _connectedDevice = r.device;
+              _selectedDevice = ledScreen;
+              _connectedDevice = ledScreen.device;
               _isConnected = true;
             });
             DisplayManager.initialize(_bluetooth);
@@ -991,64 +998,30 @@ class _ConnectionPageState extends State<ConnectionPage> {
   }
 
   Future<void> _connectToDevice(LedScreen device) async {
-    // Find the corresponding BluetoothDevice
-    List<BluetoothDevice> devices = FlutterBluePlus.connectedDevices;
-    BluetoothDevice? bluetoothDevice;
+    // Stop scanning before attempting to connect (esp. important for iOS)
+    await _bluetooth.stopScan();
+    _isScanning = false;
 
-    for (var d in devices) {
-      if (d.remoteId.str.toUpperCase() == device.macAddress) {
-        bluetoothDevice = d;
-        break;
+    final success = await _bluetooth.connect(device);
+    if (success) {
+      setState(() {
+        _selectedDevice = device;
+        _connectedDevice = device.device;
+      });
+      _isConnected = true;
+      DisplayManager.initialize(_bluetooth);
+      await _cacheLastMacDevice(device);
+      if (!mounted) return;
+      // Small stabilization delay on iOS before first large transfer
+      if (Platform.isIOS) {
+        await Future.delayed(const Duration(milliseconds: 200));
       }
-    }
-
-    if (bluetoothDevice == null) {
-      final id = device.macAddress.toUpperCase();
-      bluetoothDevice = _deviceCache[id];
-      if (bluetoothDevice == null) {
-        final normalized = id.replaceAll(RegExp(r'[:\-]'), '');
-        bluetoothDevice = _deviceCache[normalized];
-      }
-      if (bluetoothDevice == null) {
-        await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-        final scanResults = await FlutterBluePlus.scanResults.first;
-        await FlutterBluePlus.stopScan();
-        for (var result in scanResults) {
-          if (result.device.remoteId.str.toUpperCase() == device.macAddress) {
-            bluetoothDevice = result.device;
-            break;
-          }
-        }
-      }
-    }
-
-    if (bluetoothDevice != null) {
-      // Stop scanning before attempting to connect (esp. important for iOS)
-      await _bluetooth.stopScan();
-      _isScanning = false;
-      final success = await _bluetooth.connect(bluetoothDevice);
-      if (success) {
-        setState(() {
-          _selectedDevice = device;
-          _connectedDevice = bluetoothDevice;
-        });
-        _isConnected = true;
-        DisplayManager.initialize(_bluetooth);
-        await _cacheLastMacDevice(device);
-        if (!mounted) return;
-        // Small stabilization delay on iOS before first large transfer
-        if (Platform.isIOS) {
-          await Future.delayed(const Duration(milliseconds: 200));
-        }
-        // Send default logo program to the board after successful connect.
-        await _sendImageProgram(); // Replace with your image path if needed
-      } else {
-        _showMessage('Failed to connect to device');
-      }
+      // Send default logo program to the board after successful connect.
+      await _sendImageProgram(); // Replace with your image path if needed
     } else {
-      _showMessage('Bluetooth device not found');
+      _showMessage('Failed to connect to device');
     }
-	  }
+  }
 
   Future<void> _disconnect() async {
     await _bluetooth.disconnect();

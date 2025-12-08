@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 /// LED screen color type
 enum LedColorType {
@@ -111,6 +112,9 @@ class LedScreen {
   /// Device name
   final String name;
 
+  /// Backing FlutterBlue device (used for connection)
+  final BluetoothDevice device;
+
   /// Constructor
   const LedScreen({
     required this.width,
@@ -120,10 +124,16 @@ class LedScreen {
     required this.firmwareVersion,
     required this.macAddress,
     required this.name,
+    required this.device,
   });
 
   /// Create LED screen information from advertisement data
-  factory LedScreen.fromAdvertisement(List<int> data, String deviceName, String deviceId) {
+  factory LedScreen.fromAdvertisement(
+    List<int> data,
+    String deviceName,
+    String deviceId,
+    BluetoothDevice device,
+  ) {
     // Check if advertisement data format is correct
     if (data.length < 14) {
       throw const FormatException('Invalid advertisement data format');
@@ -153,6 +163,7 @@ class LedScreen {
       firmwareVersion: firmwareVersion,
       macAddress: macAddress,
       name: deviceName,
+      device: device,
     );
   }
 }
