@@ -24,8 +24,8 @@ class LedBluetooth {
   /// Notification characteristic UUID
   static const String _notifyCharacteristicUuid = '0000a953-0000-1000-8000-00805f9b34fb';
 
-  /// Advertisement name prefixes (currently only Pix-, keep list for future additions)
-  static const List<String> _advertisementNamePrefixes = ['Pix-'];
+  /// Advertisement name prefixes (support legacy and new names)
+  static const List<String> _advertisementNamePrefixes = ['Pix-', 'iledcolor-'];
 
   /// Advertisement filter name
   static const List<int> _advertisementFilterName = [0x54, 0x42, 0x44, 0x02];
@@ -237,28 +237,23 @@ class LedBluetooth {
     final platformName = result.device.platformName.trim();
     final name = advertisedName.isNotEmpty ? advertisedName : platformName;
     final lowerName = name.toLowerCase();
-    if (_advertisementNamePrefixes.any(
-        (prefix) => lowerName.startsWith(prefix.toLowerCase()))) {
-      return true;
-    }
+    final matchesName = _advertisementNamePrefixes.any(
+        (prefix) => lowerName.startsWith(prefix.toLowerCase()));
+    if (matchesName) return true;
 
-    // Check advertisement data
-    if (result.advertisementData.manufacturerData.isNotEmpty) {
-      for (var entry in result.advertisementData.manufacturerData.entries) {
-        List<int> data = entry.value;
-        if (data.length >= 4) {
-          // Check filter name
-          bool match = true;
+    // If name did not match, try manufacturer filter.
+    if (adv.manufacturerData.isNotEmpty) {
+      for (var entry in adv.manufacturerData.entries) {
+        final data = entry.value;
+        if (data.length >= _advertisementFilterName.length) {
+          bool matchesManufacturer = true;
           for (int i = 0; i < _advertisementFilterName.length; i++) {
-            if (i >= data.length || data[i] != _advertisementFilterName[i]) {
-              match = false;
+            if (data[i] != _advertisementFilterName[i]) {
+              matchesManufacturer = false;
               break;
             }
           }
-
-          if (match) {
-            return true;
-          }
+          if (matchesManufacturer) return true;
         }
       }
     }
