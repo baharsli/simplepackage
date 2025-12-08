@@ -24,8 +24,8 @@ class LedBluetooth {
   /// Notification characteristic UUID
   static const String _notifyCharacteristicUuid = '0000a953-0000-1000-8000-00805f9b34fb';
 
-  /// Advertisement name prefix
-  static const String _advertisementNamePrefix = 'Pix-';
+  /// Advertisement name prefixes (currently only Pix-, keep list for future additions)
+  static const List<String> _advertisementNamePrefixes = ['Pix-'];
 
   /// Advertisement filter name
   static const List<int> _advertisementFilterName = [0x54, 0x42, 0x44, 0x02];
@@ -231,8 +231,14 @@ class LedBluetooth {
 
   /// Check if it's an LED device
   bool _isLedDevice(ScanResult result) {
-    // Check device name
-    if (result.device.platformName.startsWith(_advertisementNamePrefix)) {
+    // Prefer advertised name (advName/localName) because platformName may be empty until after connect
+    final adv = result.advertisementData;
+    final advertisedName = adv.advName.trim();
+    final platformName = result.device.platformName.trim();
+    final name = advertisedName.isNotEmpty ? advertisedName : platformName;
+    final lowerName = name.toLowerCase();
+    if (_advertisementNamePrefixes.any(
+        (prefix) => lowerName.startsWith(prefix.toLowerCase()))) {
       return true;
     }
 
@@ -263,6 +269,10 @@ class LedBluetooth {
   /// Parse LED device information
   LedScreen _parseLedDevice(ScanResult result) {
     List<int>? manufacturerData;
+    final adv = result.advertisementData;
+    final advertisedName = adv.advName.trim();
+    final deviceName =
+        advertisedName.isNotEmpty ? advertisedName : result.device.platformName;
 
     // Get manufacturer data
     if (result.advertisementData.manufacturerData.isNotEmpty) {
@@ -304,7 +314,7 @@ class LedBluetooth {
 
     return LedScreen.fromAdvertisement(
       manufacturerData,
-      result.device.platformName,
+      deviceName,
       result.device.remoteId.str,
     );
   }

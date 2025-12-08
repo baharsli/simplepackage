@@ -415,3 +415,21 @@ Test  for ios and android mixing v 38 and v 36
 
 ### Note 
 Test  for ios and android mixing v 38 and v 36
+
+## v1.0.49  — 2025-8-12
+### Added
+- 
+
+### Changed
+- change  ['iledcolor-', 'Pix-']; to 'Pix-';
+- connection.dart & displaymanegar.dart back to v 45
+
+### Fixed
+- 
+
+### Removed
+
+
+
+### Note 
+Test  for ios and android 
