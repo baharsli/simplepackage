@@ -27,8 +27,8 @@ class LedBluetooth {
   /// Advertisement name prefixes (support legacy and new names)
   static const List<String> _advertisementNamePrefixes = ['Pix-', 'iledcolor-'];
 
-  /// Advertisement filter name
-  static const List<int> _advertisementFilterName = [0x54, 0x42, 0x44, 0x02];
+  /// Advertisement filter name (manufacturer data signature)
+  static const List<int> _advertisementFilterName = [0x42, 0x44, 0x02, 0x00];
 
   /// Identification code
   static const int _identificationCode = 0x54;
