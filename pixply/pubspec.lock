@@ -811,9 +811,11 @@ packages:
   led_ble_lib:
     dependency: "direct main"
     description:
-      path: ".."
-      relative: true
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "49b8bbc1c7e2ecd913b7b767b44109b73d11b415"
+      url: "https://github.com/baharsli/simplepackage.git"
+    source: git
     version: "0.0.1"
   lints:
     dependency: "direct dev"
