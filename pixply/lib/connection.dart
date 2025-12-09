@@ -902,11 +902,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       _startScan();
       try {
         if (_bluetooth.isConnected) {
-          // Small stabilization delay on iOS before first large transfer
-          if (Platform.isIOS) {
-            await Future.delayed(const Duration(milliseconds: 150));
-          }
-          await _sendImageProgram();
+          await _sendDefaultLogoViaDisplayManager();
         }
       } catch (_) {}
     }
@@ -944,7 +940,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
               _isConnected = true;
             });
             DisplayManager.initialize(_bluetooth);
-            await _sendImageProgram();
+            await _sendDefaultLogoViaDisplayManager();
             return true;
           }
         }
@@ -994,12 +990,7 @@ class _ConnectionPageState extends State<ConnectionPage> {
       DisplayManager.initialize(_bluetooth);
       await _cacheLastMacDevice(device);
       if (!mounted) return;
-      // Small stabilization delay on iOS before first large transfer
-      if (Platform.isIOS) {
-        await Future.delayed(const Duration(milliseconds: 200));
-      }
-      // Send default logo program to the board after successful connect.
-      await _sendImageProgram(); // Replace with your image path if needed
+      await _sendDefaultLogoViaDisplayManager();
     } else {
       _showMessage('Failed to connect to device');
     }
@@ -1105,36 +1096,24 @@ class _ConnectionPageState extends State<ConnectionPage> {
     return Uint8List.fromList(ledData);
   }
 
-  Future<bool> _sendImageProgram() async {
+  Future<bool> _sendDefaultLogoViaDisplayManager() async {
     if (!_bluetooth.isConnected) {
       _showMessage('Please connect to a device first');
       return false;
     }
     try {
-      final bmp = await loadBmpAssetAsBgrBmp('assets/logopixply.png');
-      await _bluetooth.deleteAllPrograms();
-      final program = Program.bmp(
-        partitionX: 0,
-        partitionY: 0,
-        bmpData: bmp,
-        partitionWidth: ledWidth,
-        partitionHeight: ledHeight,
-        specialEffect: SpecialEffect.fixed,
-        speed: 50,
-        stayTime: 300000,
-        circularBorder: 0,
-        brightness: 100,
+      DisplayManager.initialize(_bluetooth);
+      DisplayManager.recordLastDisplay(
+        path: 'assets/logopixply.png',
+        type: DisplayType.image,
       );
-      await _bluetooth.addProgramToPlaylist(
-        program,
-        programCount: 1,
-        programNumber: 0,
-        playbackCount: 1,
-        circularBorder: 0,
-      );
-      final ok = await _bluetooth.updatePlaylistComplete();
-      _showMessage(ok ? 'Image playlist sent' : 'Failed to send image playlist');
-      return ok;
+      // Small stabilization delay on iOS before first transfer
+      if (Platform.isIOS) {
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      await DisplayManager.refreshDisplay(clearBeforeSend: true);
+      _showMessage('Image playlist sent');
+      return true;
     } catch (e) {
       _showMessage('Error sending image: $e');
       return false;

@@ -25,7 +25,6 @@ class ColorConfig {
   // static OnColorChangedCallback? onColorChanged;
 
  static void setColor(Color color) {
-    if (color.value == selectedDisplayColor.value) return;
     selectedDisplayColor = color;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: _debounceMs), () {

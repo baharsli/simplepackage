@@ -20,7 +20,6 @@ class DisplayManager {
   static bool _initialized = false;
   static bool _refreshInFlight = false;
   static bool _forceClearPlaylist = false;
-  static Timer? _colorDebounce;
   static bool _pending = false;
 
   static ScreenRotation? _lastAppliedRotation;
@@ -49,10 +48,8 @@ class DisplayManager {
     if (_bluetooth == null || !_bluetooth!.isConnected || _lastPath == null) return;
 
     _pending = true;
-    _colorDebounce?.cancel();
-    _colorDebounce = Timer(const Duration(milliseconds: 180), () async {
-      await _drainRefresh();
-    });
+    // Debounce already handled in ColorConfig; trigger refresh immediately in next microtask.
+    scheduleMicrotask(_drainRefresh);
   }
 
   static Future<void> _onRotationChanged(ScreenRotation newRotation) async {
@@ -111,14 +108,15 @@ class DisplayManager {
 
     // If rotation or content type changed, clear playlist to rebuild cleanly
     final bool structuralChange = rotationChanged || _lastType != DisplayType.image;
-    if (forceClear || structuralChange) {
+    final bool cleared = forceClear || structuralChange;
+    if (cleared) {
       await _bluetooth!.deleteAllPrograms();
       await _bluetooth!.updatePlaylistComplete();
     }
 
     switch (_lastType) {
       case DisplayType.image:
-        await _sendColoredImage(_lastPath!);
+        await _sendColoredImage(_lastPath!, cleared: cleared);
         break;
       default:
         break;
@@ -126,7 +124,7 @@ class DisplayManager {
   }
 
   /// Send the last image again with the new selected color
-  static Future<void> _sendColoredImage(String path) async {
+  static Future<void> _sendColoredImage(String path, {bool cleared = false}) async {
     final bmp = await _loadColoredBmp(path);
     final program = Program.bmp(
       bmpData: bmp,
@@ -141,8 +139,10 @@ class DisplayManager {
       brightness: (ColorConfig.ledMasterBrightness * 100).clamp(0, 100).round(),
     );
 
-    // Clear previous playlist so new frame doesn't mix with old content.
-    await _bluetooth!.deleteAllPrograms();
+    // Clear previous playlist only if it wasn't already cleared in _refreshDisplay.
+    if (!cleared) {
+      await _bluetooth!.deleteAllPrograms();
+    }
 
     await _bluetooth!.addProgramToPlaylist(
       program,

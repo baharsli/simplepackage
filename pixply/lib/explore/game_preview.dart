@@ -489,16 +489,16 @@ const SizedBox(height: 16),
   return canvas;
 }
 
-Uint8List _imageToRawBGR(img.Image src) {
+Uint8List _imageToRawRGB(img.Image src) {
   final w = src.width, h = src.height;
   final out = List<int>.filled(w * h * 3, 0, growable: false);
   int k = 0;
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       final p = src.getPixel(x, y); // RGBA
-      out[k++] = p.b.toInt(); // B
-      out[k++] = p.g.toInt(); // G
       out[k++] = p.r.toInt(); // R
+      out[k++] = p.g.toInt(); // G
+      out[k++] = p.b.toInt(); // B
     }
   }
   return Uint8List.fromList(out);
@@ -526,14 +526,14 @@ Uint8List _imageToRawBGR(img.Image src) {
 
    
 
-//     final rawBgr = _imageToRawBGR(canvas); // دقیقا BGR مثل صفحه دیزاین
+//     final rawRgb = _imageToRawRGB(canvas); // دقیقا RGB مثل صفحه دیزاین
 
 //     final program = Program.bmp(
 //       partitionX: 0,
 //       partitionY: 0,
 //       partitionWidth: ledWidth,  
 //       partitionHeight: ledHeight,  
-//       bmpData: rawBgr,
+//       bmpData: rawRgb,
 //       specialEffect: SpecialEffect.fixed,
 //       speed: 0,
 //       stayTime: 30,
@@ -675,7 +675,7 @@ Uint8List _imageToRawBGR(img.Image src) {
     canvas = img.copyResize(canvas, width: ledWidth, height: ledHeight);
 
     // 3) تبدیل به BGR (سازگار با بورد)
-    final rawBgr = _imageToRawBGR(canvas);
+    final rawRgb = _imageToRawRGB(canvas);
 
     // 4) آماده‌سازی نمایشگر (همیشه قبل از پخش نهایی)
     await _bluetooth.switchLedScreen(true);
@@ -686,7 +686,6 @@ Uint8List _imageToRawBGR(img.Image src) {
     await _bluetooth.updatePlaylistComplete();
     await _bluetooth.deleteAllPrograms();
     await _bluetooth.updatePlaylistComplete();
-    await Future.delayed(const Duration(milliseconds: 200));
 
     // 6) ساخت Program نهایی
     final program = Program.bmp(
@@ -694,7 +693,7 @@ Uint8List _imageToRawBGR(img.Image src) {
       partitionY: 0,
       partitionWidth: ledWidth,
       partitionHeight: ledHeight,
-      bmpData: rawBgr,
+      bmpData: rawRgb,
       specialEffect: SpecialEffect.fixed,
       speed: 50,
       stayTime: 300000, // شبیه _sendImageProgram

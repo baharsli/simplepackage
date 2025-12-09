@@ -409,17 +409,19 @@ class _ConnectedPageState extends State<ConnectedPage> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
+                      // Require explicit agreement checkbox before proceeding, even if consent was recorded previously.
+                      if (!_agree) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please check the box to agree to Terms & Privacy.'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        return;
+                      }
+
                       // Enforce consent before proceeding
                       if (!_consentRecorded) {
-                        if (!_agree) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please check the box to agree to Terms & Privacy.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                          return;
-                        }
                         await _confirmConsent();
                         if (!_consentRecorded) return; // sending failed or cancelled
                       }

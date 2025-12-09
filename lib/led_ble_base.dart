@@ -304,7 +304,16 @@ class LedBluetooth {
         (prefix) => lowerName.startsWith(prefix.toLowerCase()));
     if (matchesName) return true;
 
+    // Check advertised services for known UUIDs.
+    final services = adv.serviceUuids
+        .map((u) => u.str128.toLowerCase())
+        .toList(growable: false);
+    final matchesService = services.any((s) =>
+        s == _serviceUuid.toLowerCase() ||
+        s == _altServiceUuid.toLowerCase());
+
     // If name did not match, try known manufacturer signatures.
+    bool matchesManufacturer = false;
     if (adv.manufacturerData.isNotEmpty) {
       for (var entry in adv.manufacturerData.entries) {
         final data = entry.value;
@@ -317,16 +326,22 @@ class LedBluetooth {
                 break;
               }
             }
-            if (matches) return true;
+            if (matches) {
+              matchesManufacturer = true;
+              break;
+            }
           }
         }
+        if (matchesManufacturer) break;
       }
     }
 
-    // Fallback: allow device to appear so we can inspect its data even if filters missed.
-    logFullMessage(
-        'Non-matching device: name="$name", advName="${adv.advName}", platformName="${result.device.platformName}", manufacturer=${adv.manufacturerData}');
-    return true;
+    final isPixDevice = matchesName || matchesManufacturer || matchesService;
+    if (!isPixDevice) {
+      logFullMessage(
+          'Filtered device: name="$name", advName="${adv.advName}", platformName="${result.device.platformName}", manufacturer=${adv.manufacturerData}, services=$services');
+    }
+    return isPixDevice;
   }
 
   /// Parse LED device information
