@@ -451,3 +451,47 @@ Test  for ios and android
 
 ### Note 
 Good   for  android  v 57 not good for ios 
+
+## v1.0.59  — 2025-9-12
+### Added
+- 
+
+### Changed
+
+
+
+
+### Fixed
+- pixstudio color game problem 
+time button play 
+reset button 
+logo when you connect to board 
+filter scan devise ble
+terms problem 
+change color 
+
+### Removed
+
+
+
+### Note 
+Good   for  ios 
+
+## v1.0.60  — 2025-9-12
+### Added
+- 
+
+### Changed
+
+
+
+
+### Fixed
+image for game
+
+### Removed
+zohnahl game
+
+
+### Note 
+Good   for  ios 

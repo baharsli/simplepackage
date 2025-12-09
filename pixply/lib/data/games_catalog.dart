@@ -61,7 +61,7 @@ import 'package:pixply/Games/surakarta.dart';
 import 'package:pixply/Games/brandubh.dart';
 import 'package:pixply/Games/go.dart';
 import 'package:pixply/Games/hyenachase.dart';
-import 'package:pixply/Games/zohnahl.dart';
+// import 'package:pixply/Games/zohnahl.dart';
 import 'package:pixply/Games/pentegerammi.dart';
 import 'package:pixply/Games/awithlaknannai.dart';
 import 'package:pixply/Games/ur.dart';
@@ -918,25 +918,25 @@ List<Map<String, dynamic>> _buildGames(
         gameId: 'Hyenachase',
       ),
     },
-    {
-      'id': 'Zohnahl',
-      'name': 'Zohnahl',
-      'image': 'assets/Zohnahl.png',
-      'players': '2',
-      'country': 'USA',
-      'difficulty': 'Medium',
-      'mindEffect': ['Logic', 'Social'],
-      'ageRange': {'min': 5, 'max': 99},
-      'playTimeCategory': '15–30 min',
-      'category': ['Tactical', 'Abstract', 'Strategy'],
-      'page': Zohnahl(
-        bluetooth: bluetooth,
-        isConnected: isConnected,
-        gameImage: 'assets/Zohnahl-1.png',
-        gameTitle: 'Zohnahl',
-        gameId: 'Zohnahl',
-      ),
-    },
+    // {
+    //   'id': 'Zohnahl',
+    //   'name': 'Zohnahl',
+    //   'image': 'assets/Zohnahl.png',
+    //   'players': '2',
+    //   'country': 'USA',
+    //   'difficulty': 'Medium',
+    //   'mindEffect': ['Logic', 'Social'],
+    //   'ageRange': {'min': 5, 'max': 99},
+    //   'playTimeCategory': '15–30 min',
+    //   'category': ['Tactical', 'Abstract', 'Strategy'],
+    //   'page': Zohnahl(
+    //     bluetooth: bluetooth,
+    //     isConnected: isConnected,
+    //     gameImage: 'assets/Zohnahl-1.png',
+    //     gameTitle: 'Zohnahl',
+    //     gameId: 'Zohnahl',
+    //   ),
+    // },
     {
       'id': 'Patolli',
       'name': 'Patolli',
