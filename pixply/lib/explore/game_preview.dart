@@ -1004,7 +1004,7 @@ Uint8List _imageToRawRGB(img.Image src) {
                   await _bluetooth.updatePlaylistComplete();
                   await _playSavedDesignToBoard(data);
                   await Future.delayed(
-                      Duration(seconds: 10)); // simulate loading duration
+                      Duration(seconds: 3)); // simulate loading duration
                 } catch (e) {
                   _showMessage('Error: $e');
                 } finally {
@@ -1019,7 +1019,7 @@ Uint8List _imageToRawRGB(img.Image src) {
                   await _bluetooth.updatePlaylistComplete();
                   // Immediately send the next image
                   await _sendImageProgram(lastImagePath);
-                  await Future.delayed(Duration(seconds: 10));
+                  await Future.delayed(Duration(seconds: 3));
                   _showMessage('Image cleared from LED board.');
                 } catch (e) {
                   _showMessage('Error: \$e');
@@ -1353,7 +1353,7 @@ class _PlayNowButtonState extends State<PlayNowButton> {
   void _startLoading() {
     setState(() => _localLoading = true);
     _loadingTimer?.cancel();
-    _loadingTimer = Timer(const Duration(seconds: 1), () {
+    _loadingTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) setState(() => _localLoading = false);
     });
   }
@@ -1384,7 +1384,7 @@ class _PlayNowButtonState extends State<PlayNowButton> {
           child: Stack(
             children: [
               AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 100),
                 width: buttonWidth,
                 height: buttonHeight,
                 decoration: BoxDecoration(
@@ -1397,7 +1397,7 @@ class _PlayNowButtonState extends State<PlayNowButton> {
                   alignment: _isCompleted
                       ? Alignment.centerLeft
                       : Alignment.centerRight,
-                  duration: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 100),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(

@@ -242,7 +242,7 @@ void toggleSection(String section) {
   if (picked != null) {
     ColorConfig.setColor(picked);
     setState(() => selectedColor = picked);
-    //  await DisplayManager.refreshDisplay();
+    await DisplayManager.refreshDisplay();
 
   }
 }

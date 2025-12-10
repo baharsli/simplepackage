@@ -229,10 +229,10 @@ packages:
     dependency: "direct main"
     description:
       name: file_picker
-      sha256: f8f4ea435f791ab1f817b4e338ed958cb3d04ba43d6736ffc39958d950754967
+      sha256: "7872545770c277236fd32b022767576c562ba28366204ff1a5628853cf8f2200"
       url: "https://pub.dev"
     source: hosted
-    version: "10.3.6"
+    version: "10.3.7"
   file_selector_linux:
     dependency: transitive
     description:
@@ -813,7 +813,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: b1d2108c4b136e8cb12ab385d0e41e0487e6986a
+      resolved-ref: b2540ae109199f6962c1ddb080da5402003ec6ae
       url: "https://github.com/baharsli/simplepackage.git"
     source: git
     version: "0.0.1"

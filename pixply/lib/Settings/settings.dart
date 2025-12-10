@@ -245,7 +245,7 @@ void toggleSection(String section) {
     setState(() => selectedColor = picked);
 
     // 2) آپدیت فوری صفحه‌نمایش (بدون نیاز به قطع/پلی مجدد)
-    // await DisplayManager.refreshDisplay();
+    await DisplayManager.refreshDisplay();
   }
 }
 

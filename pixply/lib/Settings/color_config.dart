@@ -24,21 +24,18 @@ class ColorConfig {
   // static ScreenRotation selectedRotation = ScreenRotation.degree0;
   // static OnColorChangedCallback? onColorChanged;
 
- static void setColor(Color color) {
+  static void setColor(Color color) {
+    if (color == selectedDisplayColor) return;
+
     selectedDisplayColor = color;
+
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: _debounceMs), () {
-      for (final callback in List.of(_callbacks)) {
-        callback(selectedDisplayColor);
+      final callbacks = List<OnColorChangedCallback>.from(_callbacks);
+      for (final cb in callbacks) {
+        cb(selectedDisplayColor);
       }
+      _debounceTimer = null;
     });
-    /// Helper to get 3 raw bytes ready for LED
-
-
-    // Auto-refresh the content
-    // if (onColorChanged != null) {
-    //   onColorChanged!(color);
-    // }
   }
 }
-
