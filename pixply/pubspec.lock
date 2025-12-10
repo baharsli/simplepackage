@@ -812,8 +812,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: HEAD
-      resolved-ref: b2540ae109199f6962c1ddb080da5402003ec6ae
+      ref: main
+      resolved-ref: da80a1dbe5a27e0959311727dbb7539647b59fde
       url: "https://github.com/baharsli/simplepackage.git"
     source: git
     version: "0.0.1"
