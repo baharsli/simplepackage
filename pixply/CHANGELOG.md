@@ -495,3 +495,43 @@ zohnahl game
 
 ### Note 
 Good   for  ios 
+
+## v1.0.61  — 2025-10-12
+### Added
+- 
+
+### Changed
+
+color config and settings for color change game & image of game change 
+
+
+
+
+### Fixed
+
+
+### Removed
+
+
+
+### Note 
+color test good for android but image game have problem 
+
+## v1.0.62  — 2025-11-12
+### Added
+- 
+
+### Changed
+
+
+
+
+### Fixed
+image for game
+
+### Removed
+
+
+
+### Note 
+Test  for  ios and android
