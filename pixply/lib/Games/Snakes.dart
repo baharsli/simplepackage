@@ -336,7 +336,7 @@ class _SnakesLaddersState extends State<SnakesLadders> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
                         width: 71,
@@ -351,15 +351,22 @@ class _SnakesLaddersState extends State<SnakesLadders> {
                           onPressed: () => Navigator.pop(context),
                         ),
                       ),
-                      const Text(
-                        "Snakes and ladders",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontFamily: 'Poppins',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.gameTitle,
+                          maxLines: 2,
+                          softWrap: true,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            fontFamily: 'Poppins',
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 12),
                       Container(
                         width: 71,
                         height: 71,

@@ -534,4 +534,25 @@ image for game
 
 
 ### Note 
-Test  for  ios and android
+Test  for  ios and android   => good for android 
+just name game snake and laders 
+
+## v1.0.63  — 2025-12-12
+### Added
+- 
+
+### Changed
+
+
+
+
+### Fixed
+name game snake and laders 
+
+### Removed
+
+
+
+### Note 
+Test  for  ios 
+
